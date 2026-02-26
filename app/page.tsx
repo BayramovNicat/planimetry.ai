@@ -19,6 +19,7 @@ export default function Home() {
     activeRoom,
     setActiveRoom,
     remeasureRoom,
+    moveRoom,
     handleFile,
     handleDrop,
     reset,
@@ -98,6 +99,7 @@ export default function Home() {
                   onHoverRoom={setHoveredRoom}
                   activeRoom={activeRoom}
                   onSelectRoom={setActiveRoom}
+                  onMoveRoom={moveRoom}
                 />
 
                 <RoomCardGrid

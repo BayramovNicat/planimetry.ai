@@ -90,6 +90,19 @@ export function useFloorPlanAnalyzer() {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleFile]);
 
+  const moveRoom = useCallback(
+    (index: number, bbox: [number, number, number, number]) => {
+      if (!result) return;
+      const room = result.rooms[index];
+      if (!room) return;
+      const updatedRooms = result.rooms.map((r, i) =>
+        i === index ? { ...r, bbox } : r,
+      );
+      setResult({ ...result, rooms: updatedRooms });
+    },
+    [result],
+  );
+
   const remeasureRoom = useCallback(
     (index: number, pxWidth: number, pxHeight: number) => {
       if (!result) return;
@@ -145,6 +158,7 @@ export function useFloorPlanAnalyzer() {
     activeRoom,
     setActiveRoom,
     remeasureRoom,
+    moveRoom,
     handleFile,
     handleDrop,
     reset,
