@@ -18,6 +18,7 @@ export function useFloorPlanAnalyzer() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<number | null>(null);
+  const [activeRoom, setActiveRoom] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImage = useCallback(async (base64: string) => {
@@ -89,12 +90,49 @@ export function useFloorPlanAnalyzer() {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleFile]);
 
+  const remeasureRoom = useCallback(
+    (index: number, pxWidth: number, pxHeight: number) => {
+      if (!result) return;
+      const room = result.rooms[index];
+      if (!room) return;
+
+      const aspectRatio = pxWidth / pxHeight;
+      const newHeight = Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
+      const newWidth = Math.round((room.area / newHeight) * 10) / 10;
+
+      // Adjust bbox to match new aspect ratio while keeping center and area in coordinate space
+      const [ymin, xmin, ymax, xmax] = room.bbox;
+      const cx = (xmin + xmax) / 2;
+      const cy = (ymin + ymax) / 2;
+      const oldBboxW = xmax - xmin;
+      const oldBboxH = ymax - ymin;
+      const bboxArea = oldBboxW * oldBboxH || 1;
+      // new bbox dimensions: same area, new aspect ratio (w/h = aspectRatio)
+      const newBboxW = Math.sqrt(bboxArea * aspectRatio);
+      const newBboxH = bboxArea / newBboxW;
+      const newBbox: [number, number, number, number] = [
+        cy - newBboxH / 2,
+        cx - newBboxW / 2,
+        cy + newBboxH / 2,
+        cx + newBboxW / 2,
+      ];
+
+      const updatedRooms = result.rooms.map((r, i) =>
+        i === index ? { ...r, width: newWidth, height: newHeight, bbox: newBbox } : r,
+      );
+      setResult({ ...result, rooms: updatedRooms });
+      setActiveRoom(null);
+    },
+    [result],
+  );
+
   const reset = useCallback(() => {
     setImage(null);
     setResult(null);
     setError(null);
     setLoading(false);
     setHoveredRoom(null);
+    setActiveRoom(null);
   }, []);
 
   return {
@@ -104,6 +142,9 @@ export function useFloorPlanAnalyzer() {
     error,
     hoveredRoom,
     setHoveredRoom,
+    activeRoom,
+    setActiveRoom,
+    remeasureRoom,
     handleFile,
     handleDrop,
     reset,

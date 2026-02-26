@@ -8,9 +8,11 @@ interface FloorPlanCanvasProps {
   rooms: Room[];
   highlightIndex: number | null;
   onHoverRoom: (index: number | null) => void;
+  activeRoom: number | null;
+  onSelectRoom: (index: number | null) => void;
 }
 
-export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPlanCanvasProps) {
+export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom, activeRoom, onSelectRoom }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<{
@@ -18,7 +20,7 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
   }>({ rects: [] });
 
   const draw = useCallback(
-    (highlight: number | null) => {
+    (highlight: number | null, active: number | null) => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container || rooms.length === 0) return;
@@ -67,21 +69,32 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
         const h = (ymax - ymin) * scale;
         rects.push({ x, y, w, h });
 
+        const isActive = active === i;
         const isHighlighted = highlight === i;
-        const isDimmed = highlight !== null && !isHighlighted;
+        const isDimmed = highlight !== null && !isHighlighted && !isActive;
 
-        ctx.fillStyle = isHighlighted
-          ? color.border.replace("0.6)", "0.35)")
-          : isDimmed
-            ? "rgba(200,200,200,0.08)"
-            : color.bg;
+        ctx.fillStyle = isActive
+          ? color.border.replace("0.6)", "0.25)")
+          : isHighlighted
+            ? color.border.replace("0.6)", "0.35)")
+            : isDimmed
+              ? "rgba(200,200,200,0.08)"
+              : color.bg;
         ctx.fillRect(x, y, w, h);
 
-        ctx.strokeStyle = isDimmed
-          ? "rgba(160,160,160,0.25)"
-          : color.border;
-        ctx.lineWidth = isHighlighted ? 3 : 2;
-        ctx.strokeRect(x, y, w, h);
+        if (isActive) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(x, y, w, h);
+          ctx.setLineDash([]);
+        } else {
+          ctx.strokeStyle = isDimmed
+            ? "rgba(160,160,160,0.25)"
+            : color.border;
+          ctx.lineWidth = isHighlighted ? 3 : 2;
+          ctx.strokeRect(x, y, w, h);
+        }
 
         const textAlpha = isDimmed ? 0.25 : 1;
 
@@ -116,8 +129,8 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
   );
 
   useEffect(() => {
-    draw(highlightIndex);
-  }, [draw, highlightIndex]);
+    draw(highlightIndex, activeRoom);
+  }, [draw, highlightIndex, activeRoom]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -145,6 +158,28 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
     onHoverRoom(null);
   }, [onHoverRoom]);
 
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const { rects } = layoutRef.current;
+      let found: number | null = null;
+      for (let i = rects.length - 1; i >= 0; i--) {
+        const r = rects[i];
+        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+          found = i;
+          break;
+        }
+      }
+      onSelectRoom(found === activeRoom ? null : found);
+    },
+    [onSelectRoom, activeRoom],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -155,6 +190,7 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
         className="w-full block cursor-pointer"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
       />
     </div>
   );

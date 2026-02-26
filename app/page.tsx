@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { useFloorPlanAnalyzer } from "./hooks/useFloorPlanAnalyzer";
 import { ImageDropZone } from "./components/ImageDropZone";
 import { ImagePreview } from "./components/ImagePreview";
@@ -16,6 +16,9 @@ export default function Home() {
     error,
     hoveredRoom,
     setHoveredRoom,
+    activeRoom,
+    setActiveRoom,
+    remeasureRoom,
     handleFile,
     handleDrop,
     reset,
@@ -23,6 +26,23 @@ export default function Home() {
   } = useFloorPlanAnalyzer();
 
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const handleDrawRect = useCallback(
+    (pxW: number, pxH: number) => {
+      if (activeRoom !== null) {
+        remeasureRoom(activeRoom, pxW, pxH);
+      }
+    },
+    [activeRoom, remeasureRoom],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActiveRoom(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [setActiveRoom]);
 
   useEffect(() => {
     if (result && canvasRef.current) {
@@ -54,6 +74,8 @@ export default function Home() {
               src={image}
               onClose={reset}
               overlay={loading ? <LoadingSkeleton /> : undefined}
+              activeRoom={activeRoom}
+              onDrawRect={handleDrawRect}
             />
 
             {error && (
@@ -74,12 +96,16 @@ export default function Home() {
                   rooms={result.rooms}
                   highlightIndex={hoveredRoom}
                   onHoverRoom={setHoveredRoom}
+                  activeRoom={activeRoom}
+                  onSelectRoom={setActiveRoom}
                 />
 
                 <RoomCardGrid
                   rooms={result.rooms}
                   hoveredRoom={hoveredRoom}
                   onHoverRoom={setHoveredRoom}
+                  activeRoom={activeRoom}
+                  onSelectRoom={setActiveRoom}
                 />
               </div>
             )}

@@ -8,8 +8,10 @@ interface RoomCardProps {
   colorIndex: number;
   isHighlighted: boolean;
   isDimmed: boolean;
+  isActive: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  onSelect: () => void;
 }
 
 export function RoomCard({
@@ -17,24 +19,29 @@ export function RoomCard({
   colorIndex,
   isHighlighted,
   isDimmed,
+  isActive,
   onMouseEnter,
   onMouseLeave,
+  onSelect,
 }: RoomCardProps) {
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={onSelect}
       className={`rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 transition-all cursor-pointer ${
-        isHighlighted
-          ? "ring-2 shadow-lg scale-[1.02]"
-          : isDimmed
-            ? "opacity-40"
-            : ""
+        isActive
+          ? "ring-2 ring-blue-500 shadow-lg scale-[1.02]"
+          : isHighlighted
+            ? "ring-2 shadow-lg scale-[1.02]"
+            : isDimmed
+              ? "opacity-40"
+              : ""
       }`}
       style={{
         borderLeftWidth: 4,
         borderLeftColor: ROOM_COLORS[colorIndex % ROOM_COLORS.length].border,
-        ...(isHighlighted
+        ...(isHighlighted && !isActive
           ? { ringColor: ROOM_COLORS[colorIndex % ROOM_COLORS.length].border }
           : {}),
       }}
