@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useRef, useState, useCallback } from "react";
+import { type ReactNode, useRef, useState, useCallback, useEffect } from "react";
 
 interface ImagePreviewProps {
   src: string;
@@ -15,6 +15,12 @@ export function ImagePreview({ src, onClose, overlay, activeRoom, onDrawRect }: 
   const [drawing, setDrawing] = useState(false);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [current, setCurrent] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    setDrawing(false);
+    setStart(null);
+    setCurrent(null);
+  }, [activeRoom]);
 
   const getPos = useCallback((e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
