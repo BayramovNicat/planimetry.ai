@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#09090b",
+};
+
 export const metadata: Metadata = {
-  title: "Floor Plan Analyzer",
-  description: "Upload a floor plan image to extract room dimensions",
+  title: "Planimetry",
+  description: "AI-powered floor plan analyzer",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Planimetry",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/android-chrome-192x192.png",
+  },
 };
 
 export default function RootLayout({
