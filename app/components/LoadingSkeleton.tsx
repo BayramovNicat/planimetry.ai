@@ -29,7 +29,7 @@ export function LoadingSkeleton() {
         <div className="absolute top-2 right-2 w-10 h-10 rounded-md border-2 border-amber-400/80 loading-room-delay-2" />
         <div className="absolute bottom-2 left-2 right-2 h-8 rounded-md border-2 border-violet-400/80 loading-room-delay-3" />
         {/* Scanning line */}
-        <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent loading-scan" />
+        <div className="absolute inset-x-0 h-0.5 bg-linear-to-r from-transparent via-blue-400 to-transparent loading-scan" />
       </div>
 
       {/* Rotating tips */}

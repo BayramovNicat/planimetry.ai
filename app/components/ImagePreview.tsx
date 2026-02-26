@@ -17,6 +17,7 @@ export function ImagePreview({ src, onClose, overlay }: ImagePreviewProps) {
       >
         ✕
       </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt="Floor plan"
