@@ -1,11 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 interface ImagePreviewProps {
   src: string;
   onClose: () => void;
+  overlay?: ReactNode;
 }
 
-export function ImagePreview({ src, onClose }: ImagePreviewProps) {
+export function ImagePreview({ src, onClose, overlay }: ImagePreviewProps) {
   return (
     <div className="relative rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
       <button
@@ -19,6 +22,11 @@ export function ImagePreview({ src, onClose }: ImagePreviewProps) {
         alt="Floor plan"
         className="w-full max-h-125 object-contain"
       />
+      {overlay && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          {overlay}
+        </div>
+      )}
     </div>
   );
 }

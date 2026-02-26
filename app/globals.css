@@ -47,3 +47,56 @@ body {
   content: "";
   animation: dots 1.5s steps(1) infinite;
 }
+
+/* Loading room borders pulsing in */
+@keyframes room-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+.loading-room { animation: room-pulse 2s ease-in-out infinite; }
+.loading-room-delay-1 { animation: room-pulse 2s ease-in-out 0.3s infinite; }
+.loading-room-delay-2 { animation: room-pulse 2s ease-in-out 0.6s infinite; }
+.loading-room-delay-3 { animation: room-pulse 2s ease-in-out 0.9s infinite; }
+
+/* Scanning line sweeping top to bottom */
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.loading-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Shimmer across skeleton cards */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(150, 150, 150, 0.08) 40%,
+    rgba(150, 150, 150, 0.15) 50%,
+    rgba(150, 150, 150, 0.08) 60%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Tip text fade in */
+@keyframes tip-fade {
+  0% { opacity: 0; transform: translateY(4px); }
+  15% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.loading-tip-fade {
+  animation: tip-fade 2.4s ease-in-out;
+}
