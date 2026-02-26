@@ -7,6 +7,9 @@ AI-powered floor plan analyzer. Upload or paste a floor plan image and get room 
 - Drag & drop, click, or paste (Ctrl+V) image upload
 - AI extraction of rooms, dimensions, and areas via Gemini
 - Interactive canvas with hover-highlighting across rooms and cards
+- **Manual remeasure** — click a room (card or canvas) to select it, then draw a rectangle on the uploaded image to correct its proportions. The aspect ratio of your drawn rectangle recalculates width/height while keeping the area unchanged.
+- **Draggable rooms** — drag rooms on the canvas to rearrange the layout. Rooms snap to each other's edges with visual snap guides.
+- Press **Escape** to deselect the active room
 
 ## Setup
 
