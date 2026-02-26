@@ -106,22 +106,6 @@ export function FloorPlanCanvas({ rooms, highlightIndex, onHoverRoom }: FloorPla
         ctx.font = `${dimSize}px Arial, sans-serif`;
         ctx.fillText(`${room.width}m × ${room.height}m`, cx, cy + nameSize * 0.3 + areaSize * 0.9);
 
-        ctx.strokeStyle = color.border;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-
-        const lineY2 = y + 14;
-        ctx.beginPath();
-        ctx.moveTo(x + 4, lineY2);
-        ctx.lineTo(x + w - 4, lineY2);
-        ctx.stroke();
-
-        const lineX2 = x + 10;
-        ctx.beginPath();
-        ctx.moveTo(lineX2, y + 4);
-        ctx.lineTo(lineX2, y + h - 4);
-        ctx.stroke();
-        ctx.setLineDash([]);
 
         ctx.globalAlpha = 1;
       });
