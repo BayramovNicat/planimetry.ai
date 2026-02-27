@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import type { AnalysisResult, Project } from "../types";
 
@@ -10,6 +10,8 @@ const OLD_SESSION_KEY = "planimetry-session";
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
+
+/* ── localStorage helpers ─────────────────────────────────────── */
 
 function loadProjects(): Project[] {
   try {
@@ -49,29 +51,58 @@ function migrateOldSession(): Project | null {
   }
 }
 
-function hydrateProjects(): Project[] {
-  let loaded = loadProjects();
+/* ── External store for useSyncExternalStore ───────────────────── */
 
-  if (loaded.length === 0) {
+let listeners: Array<() => void> = [];
+let cachedProjects: Project[] | null = null;
+
+function emitChange() {
+  cachedProjects = null; // bust cache so getSnapshot re-reads
+  for (const l of listeners) l();
+}
+
+function subscribe(callback: () => void): () => void {
+  listeners = [...listeners, callback];
+  return () => {
+    listeners = listeners.filter((l) => l !== callback);
+  };
+}
+
+function getSnapshot(): Project[] {
+  if (cachedProjects !== null) return cachedProjects;
+
+  let projects = loadProjects();
+
+  // One-time migration of old session format
+  if (projects.length === 0) {
     const migrated = migrateOldSession();
     if (migrated) {
-      loaded = [migrated];
-      saveProjects(loaded);
+      projects = [migrated];
+      saveProjects(projects);
     }
   }
 
-  return loaded;
+  cachedProjects = projects;
+  return cachedProjects;
 }
 
+const SERVER_SNAPSHOT: Project[] = [];
+function getServerSnapshot(): Project[] {
+  return SERVER_SNAPSHOT;
+}
+
+/* ── Mutators (write to localStorage + notify subscribers) ───── */
+
+function persistAndEmit(next: Project[]) {
+  saveProjects(next);
+  emitChange();
+}
+
+/* ── Hook ──────────────────────────────────────────────────────── */
+
 export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>(hydrateProjects);
+  const projects = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const persist = useCallback((next: Project[]) => {
-    setProjects(next);
-    saveProjects(next);
-  }, []);
-
-  // Create a project only when there's an image to save
   const addProject = useCallback(
     (image: string): string => {
       const id = generateId();
@@ -82,10 +113,10 @@ export function useProjects() {
         result: null,
         createdAt: Date.now(),
       };
-      persist([project, ...projects]);
+      persistAndEmit([project, ...projects]);
       return id;
     },
-    [projects, persist],
+    [projects],
   );
 
   const deleteProject = useCallback(
@@ -93,20 +124,20 @@ export function useProjects() {
       const idx = projects.findIndex((p) => p.id === id);
       if (idx === -1) return null;
       const next = projects.filter((p) => p.id !== id);
-      persist(next);
+      persistAndEmit(next);
       if (next.length === 0) return null;
       const nextIdx = Math.min(idx, next.length - 1);
       return next[nextIdx].id;
     },
-    [projects, persist],
+    [projects],
   );
 
   const updateProject = useCallback(
     (id: string, partial: Partial<Pick<Project, "image" | "result" | "name">>) => {
       const next = projects.map((p) => (p.id === id ? { ...p, ...partial } : p));
-      persist(next);
+      persistAndEmit(next);
     },
-    [projects, persist],
+    [projects],
   );
 
   const renameProject = useCallback(
