@@ -227,7 +227,8 @@ export function FloorPlanCanvas({
             }))
           : [{ x, y, w, h }];
 
-        for (const box of drawBoxes) {
+        for (let bi = 0; bi < drawBoxes.length; bi++) {
+          const box = drawBoxes[bi];
           ctx.fillStyle = fillColor;
           ctx.fillRect(box.x, box.y, box.w, box.h);
 
@@ -235,15 +236,100 @@ export function FloorPlanCanvas({
             ctx.strokeStyle = "#3b82f6";                                                                   
             ctx.lineWidth = 3;                                                                             
             ctx.setLineDash([6, 4]);                                                                       
-            ctx.strokeRect(box.x, box.y, box.w, box.h);                                                    
-            ctx.setLineDash([]);                                                                           
           } else {                                                                                         
             ctx.strokeStyle = isDimmed                                                                     
               ? "rgba(160,160,160,0.25)"                                                                   
               : color.border;                                                                              
             ctx.lineWidth = isDragging ? 3 : isHighlighted ? 3 : 2;                                        
-            ctx.strokeRect(box.x, box.y, box.w, box.h);
           }
+
+          if (drawBoxes.length === 1) {
+            // Simple room: just draw the full rect
+            ctx.strokeRect(box.x, box.y, box.w, box.h);
+          } else {
+            // Composite room: skip edges shared with sibling sub-rects
+            const eps = 1; // tolerance for edge matching
+            const edges = [
+              { dir: "top", x1: box.x, y1: box.y, x2: box.x + box.w, y2: box.y },
+              { dir: "right", x1: box.x + box.w, y1: box.y, x2: box.x + box.w, y2: box.y + box.h },
+              { dir: "bottom", x1: box.x, y1: box.y + box.h, x2: box.x + box.w, y2: box.y + box.h },
+              { dir: "left", x1: box.x, y1: box.y, x2: box.x, y2: box.y + box.h },
+            ];
+
+            for (const edge of edges) {
+              // Check if this edge is shared with any sibling sub-rect
+              let shared = false;
+              for (let bj = 0; bj < drawBoxes.length; bj++) {
+                if (bj === bi) continue;
+                const other = drawBoxes[bj];
+                if (edge.dir === "top" || edge.dir === "bottom") {
+                  // Horizontal edge: check if sibling has a matching horizontal edge at same Y
+                  const otherTop = other.y;
+                  const otherBottom = other.y + other.h;
+                  const matchY = edge.dir === "top" ? otherBottom : otherTop;
+                  if (Math.abs(edge.y1 - matchY) < eps) {
+                    // Check horizontal overlap
+                    const overlapStart = Math.max(edge.x1, other.x);
+                    const overlapEnd = Math.min(edge.x2, other.x + other.w);
+                    if (overlapEnd - overlapStart > eps) {
+                      shared = true;
+                      // Draw non-overlapping portions
+                      if (overlapStart - edge.x1 > eps) {
+                        ctx.beginPath();
+                        ctx.moveTo(edge.x1, edge.y1);
+                        ctx.lineTo(overlapStart, edge.y1);
+                        ctx.stroke();
+                      }
+                      if (edge.x2 - overlapEnd > eps) {
+                        ctx.beginPath();
+                        ctx.moveTo(overlapEnd, edge.y1);
+                        ctx.lineTo(edge.x2, edge.y1);
+                        ctx.stroke();
+                      }
+                      break;
+                    }
+                  }
+                } else {
+                  // Vertical edge: check if sibling has a matching vertical edge at same X
+                  const otherLeft = other.x;
+                  const otherRight = other.x + other.w;
+                  const matchX = edge.dir === "left" ? otherRight : otherLeft;
+                  if (Math.abs(edge.x1 - matchX) < eps) {
+                    // Check vertical overlap
+                    const overlapStart = Math.max(edge.y1, other.y);
+                    const overlapEnd = Math.min(edge.y2, other.y + other.h);
+                    if (overlapEnd - overlapStart > eps) {
+                      shared = true;
+                      // Draw non-overlapping portions
+                      if (overlapStart - edge.y1 > eps) {
+                        ctx.beginPath();
+                        ctx.moveTo(edge.x1, edge.y1);
+                        ctx.lineTo(edge.x1, overlapStart);
+                        ctx.stroke();
+                      }
+                      if (edge.y2 - overlapEnd > eps) {
+                        ctx.beginPath();
+                        ctx.moveTo(edge.x1, overlapEnd);
+                        ctx.lineTo(edge.x1, edge.y2);
+                        ctx.stroke();
+                      }
+                      break;
+                    }
+                  }
+                }
+              }
+
+              // If not shared, draw the full edge
+              if (!shared) {
+                ctx.beginPath();
+                ctx.moveTo(edge.x1, edge.y1);
+                ctx.lineTo(edge.x2, edge.y2);
+                ctx.stroke();
+              }
+            }
+          }
+
+          if (isActive) ctx.setLineDash([]);
         }
 
         // Text centered on union bbox
