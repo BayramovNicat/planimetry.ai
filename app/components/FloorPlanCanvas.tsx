@@ -166,6 +166,112 @@ export function FloorPlanCanvas({
         ctx.globalAlpha = 1;
       });
 
+      // Draw measurement labels between adjacent rooms
+      const adjacencyThreshold = 0.5; // bbox units
+      for (let i = 0; i < bboxes.length; i++) {
+        for (let j = i + 1; j < bboxes.length; j++) {
+          const [aymin, axmin, aymax, axmax] = bboxes[i];
+          const [bymin, bxmin, bymax, bxmax] = bboxes[j];
+
+          // Vertical shared wall: a.xmax ≈ b.xmin or a.xmin ≈ b.xmax
+          const vPairs: [number, number][] = [];
+          if (Math.abs(axmax - bxmin) < adjacencyThreshold) vPairs.push([axmax, axmax]);
+          if (Math.abs(axmin - bxmax) < adjacencyThreshold) vPairs.push([axmin, axmin]);
+
+          for (const [wallX] of vPairs) {
+            const overlapMin = Math.max(aymin, bymin);
+            const overlapMax = Math.min(aymax, bymax);
+            if (overlapMax - overlapMin < adjacencyThreshold) continue;
+
+            const sx = offsetX + (wallX - minX) * scale;
+            const sy1 = offsetY + (overlapMin - minY) * scale;
+            const sy2 = offsetY + (overlapMax - minY) * scale;
+            const wallLen = overlapMax - overlapMin;
+
+            // Find real-world length: use room heights proportionally
+            const roomA = rooms[i];
+            const bboxAH = aymax - aymin;
+            const realLen = bboxAH > 0 ? (wallLen / bboxAH) * roomA.height : wallLen;
+
+            ctx.save();
+            ctx.strokeStyle = "rgba(113,113,122,0.4)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy1 + 4);
+            ctx.lineTo(sx, sy2 - 4);
+            ctx.stroke();
+            // End ticks
+            ctx.beginPath();
+            ctx.moveTo(sx - 3, sy1 + 4);
+            ctx.lineTo(sx + 3, sy1 + 4);
+            ctx.moveTo(sx - 3, sy2 - 4);
+            ctx.lineTo(sx + 3, sy2 - 4);
+            ctx.stroke();
+
+            const labelY = (sy1 + sy2) / 2;
+            const label = `${realLen.toFixed(1)}m`;
+            const fontSize = Math.max(9, Math.min(11, (sy2 - sy1) / 4));
+            ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            const textW = ctx.measureText(label).width + 6;
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillRect(sx - textW / 2, labelY - fontSize / 2 - 2, textW, fontSize + 4);
+            ctx.fillStyle = "rgba(113,113,122,0.8)";
+            ctx.fillText(label, sx, labelY);
+            ctx.restore();
+          }
+
+          // Horizontal shared wall: a.ymax ≈ b.ymin or a.ymin ≈ b.ymax
+          const hPairs: [number, number][] = [];
+          if (Math.abs(aymax - bymin) < adjacencyThreshold) hPairs.push([aymax, aymax]);
+          if (Math.abs(aymin - bymax) < adjacencyThreshold) hPairs.push([aymin, aymin]);
+
+          for (const [wallY] of hPairs) {
+            const overlapMin = Math.max(axmin, bxmin);
+            const overlapMax = Math.min(axmax, bxmax);
+            if (overlapMax - overlapMin < adjacencyThreshold) continue;
+
+            const sy = offsetY + (wallY - minY) * scale;
+            const sx1 = offsetX + (overlapMin - minX) * scale;
+            const sx2 = offsetX + (overlapMax - minX) * scale;
+            const wallLen = overlapMax - overlapMin;
+
+            const roomA = rooms[i];
+            const bboxAW = axmax - axmin;
+            const realLen = bboxAW > 0 ? (wallLen / bboxAW) * roomA.width : wallLen;
+
+            ctx.save();
+            ctx.strokeStyle = "rgba(113,113,122,0.4)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sx1 + 4, sy);
+            ctx.lineTo(sx2 - 4, sy);
+            ctx.stroke();
+            // End ticks
+            ctx.beginPath();
+            ctx.moveTo(sx1 + 4, sy - 3);
+            ctx.lineTo(sx1 + 4, sy + 3);
+            ctx.moveTo(sx2 - 4, sy - 3);
+            ctx.lineTo(sx2 - 4, sy + 3);
+            ctx.stroke();
+
+            const labelX = (sx1 + sx2) / 2;
+            const label = `${realLen.toFixed(1)}m`;
+            const fontSize = Math.max(9, Math.min(11, (sx2 - sx1) / 4));
+            ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            const textW = ctx.measureText(label).width + 6;
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillRect(labelX - textW / 2, sy - fontSize / 2 - 2, textW, fontSize + 4);
+            ctx.fillStyle = "rgba(113,113,122,0.8)";
+            ctx.fillText(label, labelX, sy);
+            ctx.restore();
+          }
+        }
+      }
+
       // Draw snap lines
       const snapLines = snapLinesRef.current;
       if (snapLines.length > 0 && dragRef.current?.moved) {
