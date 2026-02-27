@@ -18,6 +18,7 @@ export default function Home() {
     setHoveredRoom,
     activeRoom,
     setActiveRoom,
+    updateRoom,
     remeasureRoom,
     moveRoom,
     handleFile,
@@ -108,6 +109,7 @@ export default function Home() {
                   onHoverRoom={setHoveredRoom}
                   activeRoom={activeRoom}
                   onSelectRoom={setActiveRoom}
+                  onUpdateRoom={updateRoom}
                 />
               </div>
             )}

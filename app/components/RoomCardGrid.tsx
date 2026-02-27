@@ -9,9 +9,10 @@ interface RoomCardGridProps {
   onHoverRoom: (index: number | null) => void;
   activeRoom: number | null;
   onSelectRoom: (index: number | null) => void;
+  onUpdateRoom: (index: number, fields: { name?: string; area?: number }) => void;
 }
 
-export function RoomCardGrid({ rooms, hoveredRoom, onHoverRoom, activeRoom, onSelectRoom }: RoomCardGridProps) {
+export function RoomCardGrid({ rooms, hoveredRoom, onHoverRoom, activeRoom, onSelectRoom, onUpdateRoom }: RoomCardGridProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {rooms.map((room, i) => (
@@ -25,6 +26,7 @@ export function RoomCardGrid({ rooms, hoveredRoom, onHoverRoom, activeRoom, onSe
           onMouseEnter={() => onHoverRoom(i)}
           onMouseLeave={() => onHoverRoom(null)}
           onSelect={() => onSelectRoom(activeRoom === i ? null : i)}
+          onUpdate={(fields) => onUpdateRoom(i, fields)}
         />
       ))}
     </div>
