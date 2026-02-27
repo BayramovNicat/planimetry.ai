@@ -1,5 +1,3 @@
-import type { Room } from "../../types";
-
 export type Bbox = [number, number, number, number];
 
 export interface ScreenRect {
@@ -54,5 +52,3 @@ export interface OverrideBox {
   tempW?: number;
   tempH?: number;
 }
-
-export type { Room };

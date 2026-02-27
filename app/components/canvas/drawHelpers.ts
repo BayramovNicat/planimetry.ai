@@ -1,5 +1,6 @@
 import { ROOM_COLORS } from "../../constants";
-import type { Bbox, OverrideBox, Room, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
+import type { Room } from "../../types";
+import type { Bbox, OverrideBox, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
 
 interface DrawContext {
   ctx: CanvasRenderingContext2D;
@@ -36,11 +37,11 @@ export function drawRoomFillsAndBorders(
     const isDimmed = highlight !== null && !isHighlighted && !isActive;
 
     const fillColor = isDragging
-      ? color.border.replace("0.6)", "0.3)")
+      ? color.border.replace(/[\d.]+\)$/, "0.3)")
       : isActive
-        ? color.border.replace("0.6)", "0.25)")
+        ? color.border.replace(/[\d.]+\)$/, "0.25)")
         : isHighlighted
-          ? color.border.replace("0.6)", "0.35)")
+          ? color.border.replace(/[\d.]+\)$/, "0.35)")
           : isDimmed
             ? "rgba(200,200,200,0.08)"
             : color.bg;
@@ -80,7 +81,7 @@ export function drawRoomFillsAndBorders(
   });
 }
 
-/** Draw edges of a composite sub-rect, skipping shared edges with siblings */
+/** Draw edges of a composite sub-rect, skipping shared segments with siblings */
 function drawCompositeEdges(
   ctx: CanvasRenderingContext2D,
   box: ScreenRect,
@@ -88,50 +89,30 @@ function drawCompositeEdges(
   bi: number,
 ) {
   const eps = 1;
+  const isHorizontal = (dir: string) => dir === "top" || dir === "bottom";
+
   const edges = [
     { dir: "top", x1: box.x, y1: box.y, x2: box.x + box.w, y2: box.y },
-    {
-      dir: "right",
-      x1: box.x + box.w,
-      y1: box.y,
-      x2: box.x + box.w,
-      y2: box.y + box.h,
-    },
-    {
-      dir: "bottom",
-      x1: box.x,
-      y1: box.y + box.h,
-      x2: box.x + box.w,
-      y2: box.y + box.h,
-    },
+    { dir: "right", x1: box.x + box.w, y1: box.y, x2: box.x + box.w, y2: box.y + box.h },
+    { dir: "bottom", x1: box.x, y1: box.y + box.h, x2: box.x + box.w, y2: box.y + box.h },
     { dir: "left", x1: box.x, y1: box.y, x2: box.x, y2: box.y + box.h },
   ];
 
   for (const edge of edges) {
-    let shared = false;
+    // Collect all overlap cuts from ALL siblings
+    const cuts: [number, number][] = [];
+
     for (let bj = 0; bj < drawBoxes.length; bj++) {
       if (bj === bi) continue;
       const other = drawBoxes[bj];
-      if (edge.dir === "top" || edge.dir === "bottom") {
+
+      if (isHorizontal(edge.dir)) {
         const matchY = edge.dir === "top" ? other.y + other.h : other.y;
         if (Math.abs(edge.y1 - matchY) < eps) {
           const overlapStart = Math.max(edge.x1, other.x);
           const overlapEnd = Math.min(edge.x2, other.x + other.w);
           if (overlapEnd - overlapStart > eps) {
-            shared = true;
-            if (overlapStart - edge.x1 > eps) {
-              ctx.beginPath();
-              ctx.moveTo(edge.x1, edge.y1);
-              ctx.lineTo(overlapStart, edge.y1);
-              ctx.stroke();
-            }
-            if (edge.x2 - overlapEnd > eps) {
-              ctx.beginPath();
-              ctx.moveTo(overlapEnd, edge.y1);
-              ctx.lineTo(edge.x2, edge.y1);
-              ctx.stroke();
-            }
-            break;
+            cuts.push([overlapStart, overlapEnd]);
           }
         }
       } else {
@@ -140,30 +121,66 @@ function drawCompositeEdges(
           const overlapStart = Math.max(edge.y1, other.y);
           const overlapEnd = Math.min(edge.y2, other.y + other.h);
           if (overlapEnd - overlapStart > eps) {
-            shared = true;
-            if (overlapStart - edge.y1 > eps) {
-              ctx.beginPath();
-              ctx.moveTo(edge.x1, edge.y1);
-              ctx.lineTo(edge.x1, overlapStart);
-              ctx.stroke();
-            }
-            if (edge.y2 - overlapEnd > eps) {
-              ctx.beginPath();
-              ctx.moveTo(edge.x1, overlapEnd);
-              ctx.lineTo(edge.x1, edge.y2);
-              ctx.stroke();
-            }
-            break;
+            cuts.push([overlapStart, overlapEnd]);
           }
         }
       }
     }
 
-    if (!shared) {
+    if (cuts.length === 0) {
       ctx.beginPath();
       ctx.moveTo(edge.x1, edge.y1);
       ctx.lineTo(edge.x2, edge.y2);
       ctx.stroke();
+      continue;
+    }
+
+    // Merge overlapping cuts and draw remaining segments
+    cuts.sort((a, b) => a[0] - b[0]);
+    const merged: [number, number][] = [cuts[0]];
+    for (let k = 1; k < cuts.length; k++) {
+      const last = merged[merged.length - 1];
+      if (cuts[k][0] <= last[1] + eps) {
+        last[1] = Math.max(last[1], cuts[k][1]);
+      } else {
+        merged.push(cuts[k]);
+      }
+    }
+
+    if (isHorizontal(edge.dir)) {
+      let pos = edge.x1;
+      for (const [cutStart, cutEnd] of merged) {
+        if (cutStart - pos > eps) {
+          ctx.beginPath();
+          ctx.moveTo(pos, edge.y1);
+          ctx.lineTo(cutStart, edge.y1);
+          ctx.stroke();
+        }
+        pos = cutEnd;
+      }
+      if (edge.x2 - pos > eps) {
+        ctx.beginPath();
+        ctx.moveTo(pos, edge.y1);
+        ctx.lineTo(edge.x2, edge.y1);
+        ctx.stroke();
+      }
+    } else {
+      let pos = edge.y1;
+      for (const [cutStart, cutEnd] of merged) {
+        if (cutStart - pos > eps) {
+          ctx.beginPath();
+          ctx.moveTo(edge.x1, pos);
+          ctx.lineTo(edge.x1, cutStart);
+          ctx.stroke();
+        }
+        pos = cutEnd;
+      }
+      if (edge.y2 - pos > eps) {
+        ctx.beginPath();
+        ctx.moveTo(edge.x1, pos);
+        ctx.lineTo(edge.x1, edge.y2);
+        ctx.stroke();
+      }
     }
   }
 }

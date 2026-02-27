@@ -1,4 +1,5 @@
-import type { Bbox, Room, ScreenRect, SnapLine } from "./canvasTypes";
+import type { Room } from "../../types";
+import type { Bbox, ScreenRect, SnapLine } from "./canvasTypes";
 
 export const SNAP_PX = 8;
 

@@ -26,6 +26,17 @@
 - Composite edge drawing handles multiple overlapping siblings correctly (3+ merged rects)
 - Move drag correctly translates all sub-rects together
 - Split preview dimensions account for edge snapping
+- Room fill colors during drag/active/highlight states now apply correctly (regex-based alpha replacement instead of broken string match)
+- Composite rooms no longer show phantom resize cursor on hover (handles are disabled for merged rooms)
+- `handleMouseUp` no longer computes mouse position and hit-tests redundantly (3x → 1x)
+- Merge now uses normalized (display) coordinates for sub-rects instead of raw stored coordinates, fixing rooms jumping position and appearing disconnected after merge
+- Composite rooms skip re-normalization since their sub-rects are already in normalized space
+
+### Changed
+
+- Extracted `fileToBase64` to shared `utils/fileToBase64.ts` (was duplicated in `page.tsx` and `useFloorPlanAnalyzer.ts`)
+- Removed unnecessary `Room` re-export from `canvasTypes.ts`; canvas modules now import `Room` directly from `types.ts`
+- Replaced `null as any` type hack for `handleImageRef` with proper nullable type
 
 ## v0.1.0
 

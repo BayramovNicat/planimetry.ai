@@ -2,19 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { normalizeRooms } from "../components/canvas/normalizeRooms";
 import type { AnalysisResult, Project } from "../types";
 import { calculateDimensions } from "../utils/dimensions";
+import { fileToBase64 } from "../utils/fileToBase64";
 
 const MAX_HISTORY = 50;
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 interface UseFloorPlanAnalyzerOptions {
   project: Project | null;
@@ -36,8 +29,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
 
   // Sync state when project changes (switching projects)
   const lastProjectId = useRef<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleImageRef = useRef<(base64: string) => Promise<void>>(null as any);
+  const handleImageRef = useRef<((base64: string) => Promise<void>) | null>(null);
 
   useEffect(() => {
     const currentId = project?.id ?? null;
@@ -55,7 +47,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
 
       // Auto-analyze if project has image but no result yet
       if (project?.image && !project?.result) {
-        handleImageRef.current(project.image);
+        handleImageRef.current?.(project.image);
       }
     }
   }, [project]);
@@ -272,13 +264,20 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
       const roomB = result.rooms[indexB];
       if (!roomA || !roomB) return;
 
-      // Collect all sub-rects (flatten if either is already composite)
-      const rectsA: [number, number, number, number][] = roomA.subRects ?? [roomA.bbox];
-      const rectsB: [number, number, number, number][] = roomB.subRects ?? [roomB.bbox];
+      // Use normalized bboxes so sub-rects match what the user sees on canvas
+      const normalized = normalizeRooms(result.rooms);
+      const normA = normalized[indexA];
+      const normB = normalized[indexB];
+
+      const rectsA: [number, number, number, number][] = normA.subRects ?? [
+        normA.bbox as [number, number, number, number],
+      ];
+      const rectsB: [number, number, number, number][] = normB.subRects ?? [
+        normB.bbox as [number, number, number, number],
+      ];
       const allRects = [...rectsA, ...rectsB];
 
       const newArea = roomA.area + roomB.area;
-      // Union bbox for layout/hit-testing
       const newBbox: [number, number, number, number] = [
         Math.min(...allRects.map((r) => r[0])),
         Math.min(...allRects.map((r) => r[1])),
@@ -298,9 +297,15 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
         subRects: allRects,
       };
 
+      // Also normalize remaining rooms so everything is in the same coordinate space
+      const rooms = normalized.map((r, i) => {
+        // Strip subRects normalization — keep original data for non-merged rooms
+        // but use their normalized bbox
+        const orig = result!.rooms[i];
+        return { ...orig, bbox: r.bbox as [number, number, number, number] };
+      });
       const insertAt = Math.min(indexA, indexB);
       const removeAt = Math.max(indexA, indexB);
-      const rooms = [...result.rooms];
       rooms.splice(removeAt, 1);
       rooms.splice(insertAt, 1, merged);
 

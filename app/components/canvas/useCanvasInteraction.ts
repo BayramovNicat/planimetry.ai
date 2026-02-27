@@ -195,9 +195,9 @@ export function useCanvasInteraction({
       const foundRoom = hitTest(mx, my, rects);
       onHoverRoom(foundRoom);
 
-      // Handle hover cursor
+      // Handle hover cursor (skip for composite rooms — no resize handles)
       let overHandle = false;
-      if (activeRoom !== null && rects[activeRoom]) {
+      if (activeRoom !== null && rects[activeRoom] && !normalizedRooms[activeRoom]?.subRects) {
         const activeRect = rects[activeRoom];
         const handles = getHandles(activeRect);
         for (const h of handles) {
@@ -233,12 +233,17 @@ export function useCanvasInteraction({
       // Split mode clicks are handled in handleMouseDown
       if (splitMode && activeRoom !== null) return;
 
+      const { mx, my } = getMousePos(e);
+      const { rects } = layoutRef.current;
+      const found = hitTest(mx, my, rects);
       const currentDrag = drag.dragRef.current;
-      if (!currentDrag) {
-        // Click without drag — select/deselect or merge
-        const { mx, my } = getMousePos(e);
-        const { rects } = layoutRef.current;
-        const found = hitTest(mx, my, rects);
+
+      // Commit a real drag (moved beyond threshold)
+      if (currentDrag?.moved && drag.dragBboxRef.current) {
+        drag.endDrag(onMoveRoom, onUpdateRoom);
+      } else {
+        // Click (no drag or drag didn't move) — handle merge or select
+        drag.cancelDrag();
 
         if (
           e.shiftKey &&
@@ -248,46 +253,16 @@ export function useCanvasInteraction({
           onMergeRooms
         ) {
           onMergeRooms(activeRoom, found);
-          return;
-        }
-
-        if (found === null && activeRoom !== null) {
+        } else if (found === null && activeRoom !== null) {
           onSelectRoom(null);
         } else if (found !== null) {
           onSelectRoom(found === activeRoom ? null : found);
         }
-        return;
       }
 
-      if (currentDrag.moved && drag.dragBboxRef.current) {
-        drag.endDrag(onMoveRoom, onUpdateRoom);
-      } else {
-        // It was a click, not a drag
-        const { mx, my } = getMousePos(e);
-        const { rects } = layoutRef.current;
-        const found = hitTest(mx, my, rects);
-
-        if (
-          e.shiftKey &&
-          activeRoom !== null &&
-          found !== null &&
-          found !== activeRoom &&
-          onMergeRooms
-        ) {
-          onMergeRooms(activeRoom, found);
-          drag.cancelDrag();
-          return;
-        }
-
-        onSelectRoom(found === activeRoom ? null : found);
-        drag.cancelDrag();
-      }
-
+      // Update cursor
       const canvas = canvasRef.current;
       if (canvas) {
-        const { mx, my } = getMousePos(e);
-        const { rects } = layoutRef.current;
-        const found = hitTest(mx, my, rects);
         canvas.style.cursor = found !== null ? "grab" : "crosshair";
       }
 

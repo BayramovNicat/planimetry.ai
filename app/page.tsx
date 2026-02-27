@@ -5,15 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { useProjectsContext } from "./components/ClientLayout";
 import { ImageDropZone } from "./components/ImageDropZone";
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+import { fileToBase64 } from "./utils/fileToBase64";
 
 export default function Home() {
   const router = useRouter();
