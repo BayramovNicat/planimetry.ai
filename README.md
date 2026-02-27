@@ -10,6 +10,7 @@ AI-powered floor plan analyzer. Upload or paste a floor plan image and get room 
 - **Manual remeasure** — click a room (card or canvas) to select it, then draw a rectangle on the uploaded image to correct its proportions. The aspect ratio of your drawn rectangle recalculates width/height while keeping the area unchanged.
 - **Draggable rooms** — drag rooms on the canvas to rearrange the layout. Rooms snap to each other's edges with visual snap guides.
 - **Inline editing** — double-click a room's name or area on the card to edit it. Changing the area automatically recalculates width/height while keeping the aspect ratio.
+- **Undo/redo** — Ctrl+Z to undo, Ctrl+Shift+Z to redo (up to 50 steps). Also available as buttons next to the total area. Covers all edits: drag, remeasure, name/area changes.
 - Press **Escape** to deselect the active room
 
 ## Setup

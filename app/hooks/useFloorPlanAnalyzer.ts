@@ -3,6 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AnalysisResult } from "../types";
 
+const MAX_HISTORY = 50;
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -21,11 +23,50 @@ export function useFloorPlanAnalyzer() {
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const undoStack = useRef<AnalysisResult[]>([]);
+  const redoStack = useRef<AnalysisResult[]>([]);
+  const [, setHistorySize] = useState(0);
+
+  const commitResult = useCallback(
+    (next: AnalysisResult) => {
+      if (result) {
+        undoStack.current.push(result);
+        if (undoStack.current.length > MAX_HISTORY) undoStack.current.shift();
+      }
+      redoStack.current = [];
+      setResult(next);
+      setHistorySize(undoStack.current.length);
+    },
+    [result],
+  );
+
+  const undo = useCallback(() => {
+    const prev = undoStack.current.pop();
+    if (!prev || !result) return;
+    redoStack.current.push(result);
+    setResult(prev);
+    setHistorySize(undoStack.current.length);
+  }, [result]);
+
+  const redo = useCallback(() => {
+    const next = redoStack.current.pop();
+    if (!next || !result) return;
+    undoStack.current.push(result);
+    setResult(next);
+    setHistorySize(undoStack.current.length);
+  }, [result]);
+
+  const canUndo = undoStack.current.length > 0;
+  const canRedo = redoStack.current.length > 0;
+
   const handleImage = useCallback(async (base64: string) => {
     setImage(base64);
     setResult(null);
     setError(null);
     setLoading(true);
+    undoStack.current = [];
+    redoStack.current = [];
+    setHistorySize(0);
 
     try {
       const res = await fetch("/api/extract", {
@@ -107,10 +148,12 @@ export function useFloorPlanAnalyzer() {
         updated.width = Math.round((fields.area / updated.height) * 10) / 10;
       }
 
-      const updatedRooms = result.rooms.map((r, i) => (i === index ? updated : r));
-      setResult({ ...result, rooms: updatedRooms });
+      const updatedRooms = result.rooms.map((r, i) =>
+        i === index ? updated : r,
+      );
+      commitResult({ ...result, rooms: updatedRooms });
     },
-    [result],
+    [result, commitResult],
   );
 
   const moveRoom = useCallback(
@@ -121,9 +164,9 @@ export function useFloorPlanAnalyzer() {
       const updatedRooms = result.rooms.map((r, i) =>
         i === index ? { ...r, bbox } : r,
       );
-      setResult({ ...result, rooms: updatedRooms });
+      commitResult({ ...result, rooms: updatedRooms });
     },
-    [result],
+    [result, commitResult],
   );
 
   const remeasureRoom = useCallback(
@@ -133,7 +176,8 @@ export function useFloorPlanAnalyzer() {
       if (!room) return;
 
       const aspectRatio = pxWidth / pxHeight;
-      const newHeight = Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
+      const newHeight =
+        Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
       const newWidth = Math.round((room.area / newHeight) * 10) / 10;
 
       // Adjust bbox to match new aspect ratio while keeping center and area in coordinate space
@@ -154,12 +198,14 @@ export function useFloorPlanAnalyzer() {
       ];
 
       const updatedRooms = result.rooms.map((r, i) =>
-        i === index ? { ...r, width: newWidth, height: newHeight, bbox: newBbox } : r,
+        i === index
+          ? { ...r, width: newWidth, height: newHeight, bbox: newBbox }
+          : r,
       );
-      setResult({ ...result, rooms: updatedRooms });
+      commitResult({ ...result, rooms: updatedRooms });
       setActiveRoom(null);
     },
-    [result],
+    [result, commitResult],
   );
 
   const reset = useCallback(() => {
@@ -169,6 +215,9 @@ export function useFloorPlanAnalyzer() {
     setLoading(false);
     setHoveredRoom(null);
     setActiveRoom(null);
+    undoStack.current = [];
+    redoStack.current = [];
+    setHistorySize(0);
   }, []);
 
   return {
@@ -183,6 +232,10 @@ export function useFloorPlanAnalyzer() {
     updateRoom,
     remeasureRoom,
     moveRoom,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     handleFile,
     handleDrop,
     reset,

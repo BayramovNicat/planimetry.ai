@@ -21,6 +21,10 @@ export default function Home() {
     updateRoom,
     remeasureRoom,
     moveRoom,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     handleFile,
     handleDrop,
     reset,
@@ -41,10 +45,18 @@ export default function Home() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setActiveRoom(null);
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveRoom]);
+  }, [setActiveRoom, undo, redo]);
 
   useEffect(() => {
     if (result && canvasRef.current) {
@@ -88,11 +100,31 @@ export default function Home() {
 
             {result && (
               <div ref={canvasRef} className="space-y-6">
-                {result.total_area && (
-                  <div className="inline-block px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold">
-                    Total area: {result.total_area} m²
+                <div className="flex items-center gap-3 flex-wrap">
+                  {result.total_area && (
+                    <div className="inline-block px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold">
+                      Total area: {result.total_area} m²
+                    </div>
+                  )}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={undo}
+                      disabled={!canUndo}
+                      title="Undo (Ctrl+Z)"
+                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      ↩
+                    </button>
+                    <button
+                      onClick={redo}
+                      disabled={!canRedo}
+                      title="Redo (Ctrl+Shift+Z)"
+                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                    >
+                      ↪
+                    </button>
                   </div>
-                )}
+                </div>
 
                 <FloorPlanCanvas
                   rooms={result.rooms}
