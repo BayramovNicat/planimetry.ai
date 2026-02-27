@@ -1,72 +1,62 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
-import { useFloorPlanAnalyzer } from "./hooks/useFloorPlanAnalyzer";
+import { useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useProjectsContext } from "./components/ClientLayout";
 import { ImageDropZone } from "./components/ImageDropZone";
-import { ImagePreview } from "./components/ImagePreview";
-import { FloorPlanCanvas } from "./components/FloorPlanCanvas";
-import { RoomCardGrid } from "./components/RoomCardGrid";
-import { LoadingSkeleton } from "./components/LoadingSkeleton";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function Home() {
-  const {
-    image,
-    loading,
-    result,
-    error,
-    hoveredRoom,
-    setHoveredRoom,
-    activeRoom,
-    setActiveRoom,
-    updateRoom,
-    remeasureRoom,
-    moveRoom,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    handleFile,
-    handleDrop,
-    reset,
-    fileInputRef,
-  } = useFloorPlanAnalyzer();
+  const router = useRouter();
+  const { addProject } = useProjectsContext();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  const handleDrawRect = useCallback(
-    (pxW: number, pxH: number) => {
-      if (activeRoom !== null) {
-        remeasureRoom(activeRoom, pxW, pxH);
-      }
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      const base64 = await fileToBase64(file);
+      const id = addProject(base64);
+      router.push(`/project/${id}`);
     },
-    [activeRoom, remeasureRoom],
+    [addProject, router],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile],
   );
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setActiveRoom(null);
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
-        e.preventDefault();
-        redo();
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) handleFile(file);
+          break;
+        }
       }
     };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveRoom, undo, redo]);
-
-  useEffect(() => {
-    if (result && canvasRef.current) {
-      canvasRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [result]);
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [handleFile]);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 md:p-12">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto pt-8">
         <h1 className="text-3xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">
           Floor Plan Analyzer
         </h1>
@@ -74,79 +64,11 @@ export default function Home() {
           Upload or paste a floor plan image to extract room dimensions
         </p>
 
-        {!image && (
-          <ImageDropZone
-            onFile={handleFile}
-            onDrop={handleDrop}
-            fileInputRef={fileInputRef}
-          />
-        )}
-
-        {image && (
-          <div className="space-y-6">
-            <ImagePreview
-              src={image}
-              onClose={reset}
-              overlay={loading ? <LoadingSkeleton /> : undefined}
-              activeRoom={activeRoom}
-              onDrawRect={handleDrawRect}
-            />
-
-            {error && (
-              <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4 text-red-700 dark:text-red-300 text-sm">
-                {error}
-              </div>
-            )}
-
-            {result && (
-              <div ref={canvasRef} className="space-y-6">
-                <div className="flex items-center gap-3 flex-wrap">
-                  {result.total_area && (
-                    <div className="inline-block px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold">
-                      Total area: {result.total_area} m²
-                    </div>
-                  )}
-                  <div className="flex gap-1">
-                    <button
-                      onClick={undo}
-                      disabled={!canUndo}
-                      title="Undo (Ctrl+Z)"
-                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      ↩
-                    </button>
-                    <button
-                      onClick={redo}
-                      disabled={!canRedo}
-                      title="Redo (Ctrl+Shift+Z)"
-                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      ↪
-                    </button>
-                  </div>
-                </div>
-
-                <FloorPlanCanvas
-                  rooms={result.rooms}
-                  highlightIndex={hoveredRoom}
-                  onHoverRoom={setHoveredRoom}
-                  activeRoom={activeRoom}
-                  onSelectRoom={setActiveRoom}
-                  onMoveRoom={moveRoom}
-                />
-
-                <RoomCardGrid
-                  rooms={result.rooms}
-                  hoveredRoom={hoveredRoom}
-                  onHoverRoom={setHoveredRoom}
-                  activeRoom={activeRoom}
-                  onSelectRoom={setActiveRoom}
-                  onUpdateRoom={updateRoom}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <ImageDropZone
+          onFile={handleFile}
+          onDrop={handleDrop}
+          fileInputRef={fileInputRef}
+        />
       </div>
     </div>
   );

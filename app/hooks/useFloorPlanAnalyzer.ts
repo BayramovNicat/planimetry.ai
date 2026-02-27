@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { AnalysisResult } from "../types";
+import type { AnalysisResult, Project } from "../types";
 
 const MAX_HISTORY = 50;
 
@@ -14,10 +14,15 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function useFloorPlanAnalyzer() {
-  const [image, setImage] = useState<string | null>(null);
+interface UseFloorPlanAnalyzerOptions {
+  project: Project | null;
+  onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void;
+}
+
+export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzerOptions) {
+  const [image, setImage] = useState<string | null>(project?.image ?? null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(project?.result ?? null);
   const [error, setError] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<number | null>(null);
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
@@ -26,6 +31,35 @@ export function useFloorPlanAnalyzer() {
   const undoStack = useRef<AnalysisResult[]>([]);
   const redoStack = useRef<AnalysisResult[]>([]);
   const [, setHistorySize] = useState(0);
+
+  // Sync state when project changes (switching projects)
+  const lastProjectId = useRef<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleImageRef = useRef<(base64: string) => Promise<void>>(null as any);
+
+  useEffect(() => {
+    const currentId = project?.id ?? null;
+    if (currentId !== lastProjectId.current) {
+      lastProjectId.current = currentId;
+      setImage(project?.image ?? null);
+      setResult(project?.result ?? null);
+      setError(null);
+      setLoading(false);
+      setHoveredRoom(null);
+      setActiveRoom(null);
+      undoStack.current = [];
+      redoStack.current = [];
+      setHistorySize(0);
+
+      // Auto-analyze if project has image but no result yet
+      if (project?.image && !project?.result) {
+        handleImageRef.current(project.image);
+      }
+    }
+  }, [project]);
+
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
 
   const commitResult = useCallback(
     (next: AnalysisResult) => {
@@ -36,6 +70,7 @@ export function useFloorPlanAnalyzer() {
       redoStack.current = [];
       setResult(next);
       setHistorySize(undoStack.current.length);
+      onUpdateRef.current({ result: next });
     },
     [result],
   );
@@ -46,6 +81,7 @@ export function useFloorPlanAnalyzer() {
     redoStack.current.push(result);
     setResult(prev);
     setHistorySize(undoStack.current.length);
+    onUpdateRef.current({ result: prev });
   }, [result]);
 
   const redo = useCallback(() => {
@@ -54,6 +90,7 @@ export function useFloorPlanAnalyzer() {
     undoStack.current.push(result);
     setResult(next);
     setHistorySize(undoStack.current.length);
+    onUpdateRef.current({ result: next });
   }, [result]);
 
   const canUndo = undoStack.current.length > 0;
@@ -67,6 +104,7 @@ export function useFloorPlanAnalyzer() {
     undoStack.current = [];
     redoStack.current = [];
     setHistorySize(0);
+    onUpdateRef.current({ image: base64, result: null });
 
     try {
       const res = await fetch("/api/extract", {
@@ -83,6 +121,7 @@ export function useFloorPlanAnalyzer() {
 
       const data: AnalysisResult = await res.json();
       setResult(data);
+      onUpdateRef.current({ result: data });
     } catch (err) {
       const msg =
         err instanceof DOMException && err.name === "TimeoutError"
@@ -95,6 +134,8 @@ export function useFloorPlanAnalyzer() {
       setLoading(false);
     }
   }, []);
+
+  handleImageRef.current = handleImage;
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -180,14 +221,12 @@ export function useFloorPlanAnalyzer() {
         Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
       const newWidth = Math.round((room.area / newHeight) * 10) / 10;
 
-      // Adjust bbox to match new aspect ratio while keeping center and area in coordinate space
       const [ymin, xmin, ymax, xmax] = room.bbox;
       const cx = (xmin + xmax) / 2;
       const cy = (ymin + ymax) / 2;
       const oldBboxW = xmax - xmin;
       const oldBboxH = ymax - ymin;
       const bboxArea = oldBboxW * oldBboxH || 1;
-      // new bbox dimensions: same area, new aspect ratio (w/h = aspectRatio)
       const newBboxW = Math.sqrt(bboxArea * aspectRatio);
       const newBboxH = bboxArea / newBboxW;
       const newBbox: [number, number, number, number] = [
@@ -208,18 +247,6 @@ export function useFloorPlanAnalyzer() {
     [result, commitResult],
   );
 
-  const reset = useCallback(() => {
-    setImage(null);
-    setResult(null);
-    setError(null);
-    setLoading(false);
-    setHoveredRoom(null);
-    setActiveRoom(null);
-    undoStack.current = [];
-    redoStack.current = [];
-    setHistorySize(0);
-  }, []);
-
   return {
     image,
     loading,
@@ -238,7 +265,6 @@ export function useFloorPlanAnalyzer() {
     canRedo,
     handleFile,
     handleDrop,
-    reset,
     fileInputRef,
   };
 }
