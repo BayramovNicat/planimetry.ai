@@ -8,4 +8,4 @@ export {
   drawSplitPreview,
 } from "./drawHelpers";
 export { normalizeRooms } from "./normalizeRooms";
-export { getRoomEdges, hitTest, SNAP_PX,snapBbox, snapSplitPosition } from "./snapUtils";
+export { getRoomEdges, hitTest, SNAP_PX, snapBbox, snapSplitPosition } from "./snapUtils";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo,useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { Room } from "../types";
 import { normalizeRooms } from "./canvas/normalizeRooms";

@@ -1,8 +1,8 @@
 "use client";
 
-import { Redo2, Scissors,Undo2 } from "lucide-react";
+import { Redo2, Scissors, Undo2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback,useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useProjectsContext } from "../../components/ClientLayout";
 import { FloorPlanCanvas } from "../../components/FloorPlanCanvas";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect,useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { useProjectsContext } from "./components/ClientLayout";
 import { ImageDropZone } from "./components/ImageDropZone";

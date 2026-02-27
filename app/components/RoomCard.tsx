@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback,useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ROOM_COLORS } from "../constants";
 import type { Room } from "../types";

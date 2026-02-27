@@ -3,7 +3,7 @@
 import { Ellipsis, Menu, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback,useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Project } from "../types";
 import { Tooltip } from "./Tooltip";

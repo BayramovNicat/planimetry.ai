@@ -1,4 +1,4 @@
-import type { Bbox,Room } from "./canvasTypes";
+import type { Bbox, Room } from "./canvasTypes";
 
 /**
  * Normalize room bboxes so they are sized by real-world dimensions (meters)

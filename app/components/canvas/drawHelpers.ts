@@ -1,5 +1,5 @@
 import { ROOM_COLORS } from "../../constants";
-import type { Bbox, OverrideBox,Room, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
+import type { Bbox, OverrideBox, Room, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
 
 interface DrawContext {
   ctx: CanvasRenderingContext2D;

@@ -1,4 +1,4 @@
-import { useCallback,useRef } from "react";
+import { useCallback, useRef } from "react";
 
 import type { Room } from "../../types";
 import type { Bbox, LayoutInfo, OverrideBox, SnapLine, SplitPreview } from "./canvasTypes";

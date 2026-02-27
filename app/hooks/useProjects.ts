@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef,useState } from "react";
+import { useCallback, useState } from "react";
 
-import type { AnalysisResult,Project } from "../types";
+import type { AnalysisResult, Project } from "../types";
 
 const STORAGE_KEY = "planimetry-projects";
 const OLD_SESSION_KEY = "planimetry-session";
@@ -49,26 +49,22 @@ function migrateOldSession(): Project | null {
   }
 }
 
-export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const hydrated = useRef(false);
+function hydrateProjects(): Project[] {
+  let loaded = loadProjects();
 
-  useEffect(() => {
-    if (hydrated.current) return;
-    hydrated.current = true;
-
-    let loaded = loadProjects();
-
-    if (loaded.length === 0) {
-      const migrated = migrateOldSession();
-      if (migrated) {
-        loaded = [migrated];
-        saveProjects(loaded);
-      }
+  if (loaded.length === 0) {
+    const migrated = migrateOldSession();
+    if (migrated) {
+      loaded = [migrated];
+      saveProjects(loaded);
     }
+  }
 
-    setProjects(loaded);
-  }, []);
+  return loaded;
+}
+
+export function useProjects() {
+  const [projects, setProjects] = useState<Project[]>(hydrateProjects);
 
   const persist = useCallback((next: Project[]) => {
     setProjects(next);
