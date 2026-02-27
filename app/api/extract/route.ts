@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { calculateDimensions } from "../../utils/dimensions";
 
 const PROMPT = `Analyze this floor plan image. Detect every room and return its data.
 
@@ -131,16 +132,18 @@ export async function POST(request: NextRequest) {
       const [ymin, xmin, ymax, xmax] = room.bbox;
       const pixelW = xmax - xmin;
       const pixelH = ymax - ymin;
-      const ratio = pixelW && pixelH ? pixelW / pixelH : 1;
 
-      const width = Math.sqrt(room.area * ratio);
-      const height = Math.sqrt(room.area / ratio);
+      const { width, height } = calculateDimensions(
+        pixelW || 1,
+        pixelH || 1,
+        room.area,
+      );
 
       return {
         name: room.name,
         area: room.area,
-        width: Math.round(width * 100) / 100,
-        height: Math.round(height * 100) / 100,
+        width,
+        height,
         bbox: room.bbox,
       };
     });

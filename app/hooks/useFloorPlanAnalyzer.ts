@@ -19,10 +19,15 @@ interface UseFloorPlanAnalyzerOptions {
   onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void;
 }
 
-export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzerOptions) {
+export function useFloorPlanAnalyzer({
+  project,
+  onUpdate,
+}: UseFloorPlanAnalyzerOptions) {
   const [image, setImage] = useState<string | null>(project?.image ?? null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(project?.result ?? null);
+  const [result, setResult] = useState<AnalysisResult | null>(
+    project?.result ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<number | null>(null);
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
@@ -173,7 +178,16 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
   }, [handleFile]);
 
   const updateRoom = useCallback(
-    (index: number, fields: { name?: string; area?: number }) => {
+    (
+      index: number,
+      fields: {
+        name?: string;
+        area?: number;
+        width?: number;
+        height?: number;
+        bbox?: [number, number, number, number];
+      },
+    ) => {
       if (!result) return;
       const room = result.rooms[index];
       if (!room) return;
@@ -188,6 +202,9 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
         updated.height = Math.round(Math.sqrt(fields.area / ratio) * 10) / 10;
         updated.width = Math.round((fields.area / updated.height) * 10) / 10;
       }
+      if (fields.width !== undefined) updated.width = fields.width;
+      if (fields.height !== undefined) updated.height = fields.height;
+      if (fields.bbox !== undefined) updated.bbox = fields.bbox;
 
       const updatedRooms = result.rooms.map((r, i) =>
         i === index ? updated : r,
