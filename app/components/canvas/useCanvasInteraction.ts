@@ -172,6 +172,7 @@ export function useCanvasInteraction({
             activeRoom,
             activeRect,
             layoutRef.current,
+            normalizedRooms[activeRoom],
           );
           if (preview) {
             canvas.style.cursor = "crosshair";
@@ -249,6 +250,7 @@ export function useCanvasInteraction({
     [
       canvasRef,
       getMousePos,
+      normalizedRooms,
       drag,
       split,
       layoutRef,

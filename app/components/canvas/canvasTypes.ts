@@ -37,6 +37,9 @@ export interface SplitPreview {
   snappedMy: number;
   orientation: "h" | "v";
   snapped: boolean;
+  /** Predicted dimensions for the two resulting sub-rooms */
+  roomA: { width: number; height: number; area: number };
+  roomB: { width: number; height: number; area: number };
 }
 
 export interface SnapLine {

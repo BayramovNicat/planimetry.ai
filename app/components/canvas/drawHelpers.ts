@@ -429,6 +429,66 @@ export function drawSnapLines(
 
 // ─── Split preview ───────────────────────────────────────────────────
 
+/** Draw a dimension label pill (W × H + area) centered at (cx, cy) */
+function drawSplitDimensionLabel(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  dims: { width: number; height: number; area: number },
+  maxW: number,
+  maxH: number,
+) {
+  const dimSize = Math.max(9, Math.min(12, Math.min(maxW, maxH) / 8));
+  const areaSize = Math.max(11, Math.min(15, Math.min(maxW, maxH) / 6));
+  const lineGap = dimSize * 0.4;
+
+  const dimText = `${dims.width.toFixed(1)} × ${dims.height.toFixed(1)}`;
+  const areaText = `${dims.area.toFixed(1)} m²`;
+
+  ctx.font = `600 ${areaSize}px Arial, sans-serif`;
+  const areaTextW = ctx.measureText(areaText).width;
+  ctx.font = `500 ${dimSize}px Arial, sans-serif`;
+  const dimTextW = ctx.measureText(dimText).width;
+
+  const pillW = Math.max(areaTextW, dimTextW) + 14;
+  const pillH = areaSize + dimSize + lineGap + 12;
+  const pillX = cx - pillW / 2;
+  const pillY = cy - pillH / 2;
+
+  // Background pill
+  ctx.fillStyle = "rgba(30, 58, 138, 0.12)";
+  const r = 6;
+  ctx.beginPath();
+  ctx.moveTo(pillX + r, pillY);
+  ctx.lineTo(pillX + pillW - r, pillY);
+  ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
+  ctx.lineTo(pillX + pillW, pillY + pillH - r);
+  ctx.quadraticCurveTo(
+    pillX + pillW,
+    pillY + pillH,
+    pillX + pillW - r,
+    pillY + pillH,
+  );
+  ctx.lineTo(pillX + r, pillY + pillH);
+  ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
+  ctx.lineTo(pillX, pillY + r);
+  ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Area text
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `600 ${areaSize}px Arial, sans-serif`;
+  ctx.fillStyle = "rgba(37, 99, 235, 0.9)";
+  ctx.fillText(areaText, cx, cy - (dimSize + lineGap) / 2);
+
+  // Dimension text
+  ctx.font = `500 ${dimSize}px Arial, sans-serif`;
+  ctx.fillStyle = "rgba(71, 85, 105, 0.85)";
+  ctx.fillText(dimText, cx, cy + (areaSize + lineGap) / 2);
+}
+
 export function drawSplitPreview(
   dc: DrawContext,
   splitPreview: SplitPreview,
@@ -460,6 +520,31 @@ export function drawSplitPreview(
       ctx.lineTo(containerWidth, clampedY);
       ctx.stroke();
     }
+
+    // Dimension labels for top and bottom halves
+    ctx.setLineDash([]);
+    const topH = clampedY - activeRect.y;
+    const bottomH = activeRect.y + activeRect.h - clampedY;
+    if (topH > 30) {
+      drawSplitDimensionLabel(
+        ctx,
+        activeRect.x + activeRect.w / 2,
+        activeRect.y + topH / 2,
+        splitPreview.roomA,
+        activeRect.w,
+        topH,
+      );
+    }
+    if (bottomH > 30) {
+      drawSplitDimensionLabel(
+        ctx,
+        activeRect.x + activeRect.w / 2,
+        clampedY + bottomH / 2,
+        splitPreview.roomB,
+        activeRect.w,
+        bottomH,
+      );
+    }
   } else {
     const clampedX = Math.max(
       activeRect.x,
@@ -478,6 +563,31 @@ export function drawSplitPreview(
       ctx.moveTo(clampedX, 0);
       ctx.lineTo(clampedX, containerHeight);
       ctx.stroke();
+    }
+
+    // Dimension labels for left and right halves
+    ctx.setLineDash([]);
+    const leftW = clampedX - activeRect.x;
+    const rightW = activeRect.x + activeRect.w - clampedX;
+    if (leftW > 30) {
+      drawSplitDimensionLabel(
+        ctx,
+        activeRect.x + leftW / 2,
+        activeRect.y + activeRect.h / 2,
+        splitPreview.roomA,
+        leftW,
+        activeRect.h,
+      );
+    }
+    if (rightW > 30) {
+      drawSplitDimensionLabel(
+        ctx,
+        clampedX + rightW / 2,
+        activeRect.y + activeRect.h / 2,
+        splitPreview.roomB,
+        rightW,
+        activeRect.h,
+      );
     }
   }
 
