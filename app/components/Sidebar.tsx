@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ellipsis, Pencil, Trash2, Plus, Menu } from "lucide-react";
+import { Ellipsis, Pencil, Trash2, Plus, Menu, Search, X } from "lucide-react";
 import type { Project } from "../types";
 
 interface SidebarProps {
@@ -27,7 +27,10 @@ export function Sidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,13 +116,47 @@ export function Sidebar({
       >
         {/* Header area */}
         <div className="px-3 pt-3 pb-2">
-          {/* Spacer for the toggle button */}
-          <div className="w-10 h-10" />
+          {/* Toggle spacer + search button row */}
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10" />
+            <button
+              onClick={() => {
+                setSearching(!searching);
+                setSearchQuery("");
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              title="Search projects"
+            >
+              {searching ? (
+                <X size={16} className="text-zinc-600 dark:text-zinc-400" />
+              ) : (
+                <Search size={16} className="text-zinc-600 dark:text-zinc-400" />
+              )}
+            </button>
+          </div>
+
+          {/* Search input */}
+          {searching && (
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearching(false);
+                  setSearchQuery("");
+                }
+              }}
+              placeholder="Search plans..."
+              autoFocus
+              className="w-full mt-1 px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:border-blue-500 transition-colors"
+            />
+          )}
 
           {/* New plan button */}
           <Link
             href="/"
-            className="flex items-center gap-2 px-4 py-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 mt-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-sm font-medium transition-colors"
           >
             <Plus size={18} />
             New plan
@@ -134,7 +171,9 @@ export function Sidebar({
             </p>
           )}
 
-          {projects.map((project) => {
+          {projects.filter((p) =>
+            !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
+          ).map((project) => {
             const isActive = project.id === activeId;
             const isEditing = editingId === project.id;
             const isMenuOpen = menuOpenId === project.id;
