@@ -47,24 +47,37 @@ export function FloorPlanCanvas({
 
   const normalizedRooms = useMemo(() => {
     if (rooms.length === 0) return [];
-    
-    let pxPerM = 100;
-    const first = rooms[0];
-    if (first.width > 0 && first.height > 0) {
-      const bboxW = first.bbox[3] - first.bbox[1];
-      const bboxH = first.bbox[2] - first.bbox[0];
-      pxPerM = (bboxW / first.width + bboxH / first.height) / 2;
-    }
 
+    // Compute a global pxPerM from the median of all rooms (more robust than just first)
+    const ratios: number[] = [];
+    for (const room of rooms) {
+      if (room.width > 0 && room.height > 0) {
+        const bboxW = room.bbox[3] - room.bbox[1];
+        const bboxH = room.bbox[2] - room.bbox[0];
+        if (bboxW > 0 && bboxH > 0) {
+          ratios.push(bboxW / room.width, bboxH / room.height);
+        }
+      }
+    }
+    ratios.sort((a, b) => a - b);
+    const pxPerM = ratios.length > 0
+      ? ratios[Math.floor(ratios.length / 2)]
+      : 100;
+
+    // Rebuild each bbox centered on its AI-given center, sized by real-world dimensions
     return rooms.map(room => {
-      const [ymin, xmin] = room.bbox;
+      const [ymin, xmin, ymax, xmax] = room.bbox;
+      const cx = (xmin + xmax) / 2;
+      const cy = (ymin + ymax) / 2;
+      const halfW = (room.width * pxPerM) / 2;
+      const halfH = (room.height * pxPerM) / 2;
       return {
         ...room,
         bbox: [
-          ymin,
-          xmin,
-          ymin + room.height * pxPerM,
-          xmin + room.width * pxPerM,
+          cy - halfH,
+          cx - halfW,
+          cy + halfH,
+          cx + halfW,
         ] as [number, number, number, number],
       };
     });

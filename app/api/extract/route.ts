@@ -1,35 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateDimensions } from "../../utils/dimensions";
 
-const PROMPT = `Analyze this floor plan image. Detect every room and return its data.
+const PROMPT = `Extract all rooms from this floor plan. For each room return its name, area in m², and bounding box.
 
-For each room:
-1. Read the room name exactly as labeled in the image
-2. Read the area in m² exactly as labeled in the image
-3. Detect the bounding box of the room's interior walls
+Bounding box: [ymin, xmin, ymax, xmax] in 0-1000 coordinates where (0,0)=top-left, (1000,1000)=bottom-right. Tightly fit each room's walls. Adjacent rooms must share the same edge coordinate. No overlaps. Match the visual proportions exactly.
 
-Bounding box rules:
-- Use normalized coordinates from 0 to 1000 where (0,0) = top-left, (1000,1000) = bottom-right of the image
-- Format: [ymin, xmin, ymax, xmax]
-- Each box must tightly fit the INNER wall edges of that room
-- Rooms sharing a wall MUST share the same coordinate on that edge
-- Boxes must NOT overlap — adjacent rooms touch but never intersect
-- Pay close attention to the actual proportions: rooms are rarely square. A long narrow hallway should have a wide bbox, a small bathroom a compact one
-- Trace the walls visible in the image, do not guess
+Return total_area if labeled.
 
-Also extract the total apartment area if shown on the image.
-
-Return ONLY valid JSON, no markdown, no extra text:
-{
-  "total_area": <number or null>,
-  "rooms": [
-    {
-      "name": "<room name>",
-      "area": <number>,
-      "bbox": [<ymin>, <xmin>, <ymax>, <xmax>]
-    }
-  ]
-}`;
+Return ONLY JSON: {"total_area": <number|null>, "rooms": [{"name": "<string>", "area": <number>, "bbox": [ymin, xmin, ymax, xmax]}]}`;
 
 async function callGemini(
   apiKey: string,
