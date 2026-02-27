@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { useProjects } from "../hooks/useProjects";
@@ -30,15 +30,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { projects, addProject, deleteProject, updateProject, renameProject } = useProjects();
 
-  const [collapsed, setCollapsed] = useState(true);
-
-  // Restore sidebar state from localStorage
-  useEffect(() => {
+  const [collapsed, setCollapsed] = useState(() => {
     try {
       const stored = localStorage.getItem(SIDEBAR_KEY);
-      if (stored !== null) setCollapsed(stored === "collapsed");
+      if (stored !== null) return stored === "collapsed";
     } catch {}
-  }, []);
+    return true;
+  });
 
   const toggleSidebar = () => {
     const next = !collapsed;
@@ -64,7 +62,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       />
       <main
         className={`min-h-screen transition-[margin] duration-300 ease-in-out ${
-          collapsed ? "ml-0" : "md:ml-[260px]"
+          collapsed ? "ml-0" : "md:ml-65"
         }`}
       >
         {children}
