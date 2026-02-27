@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { AnalysisResult, Project } from "../types";
+import { calculateDimensions } from "../utils/dimensions";
 
 const MAX_HISTORY = 50;
 
@@ -219,8 +220,25 @@ export function useFloorPlanAnalyzer({
       if (!result) return;
       const room = result.rooms[index];
       if (!room) return;
+
+      const dy = bbox[0] - room.bbox[0];
+      const dx = bbox[1] - room.bbox[1];
+
+      const updated: Partial<typeof room> & { bbox: typeof bbox } = { bbox };
+      if (room.subRects) {
+        updated.subRects = room.subRects.map(
+          (r) =>
+            [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as [
+              number,
+              number,
+              number,
+              number,
+            ],
+        );
+      }
+
       const updatedRooms = result.rooms.map((r, i) =>
-        i === index ? { ...r, bbox } : r,
+        i === index ? { ...r, ...updated } : r,
       );
       commitResult({ ...result, rooms: updatedRooms });
     },
@@ -264,6 +282,110 @@ export function useFloorPlanAnalyzer({
     [result, commitResult],
   );
 
+  const mergeRooms = useCallback(
+    (indexA: number, indexB: number) => {
+      if (!result) return;
+      const roomA = result.rooms[indexA];
+      const roomB = result.rooms[indexB];
+      if (!roomA || !roomB) return;
+
+      // Collect all sub-rects (flatten if either is already composite)
+      const rectsA: [number, number, number, number][] = roomA.subRects ?? [
+        roomA.bbox,
+      ];
+      const rectsB: [number, number, number, number][] = roomB.subRects ?? [
+        roomB.bbox,
+      ];
+      const allRects = [...rectsA, ...rectsB];
+
+      const newArea = roomA.area + roomB.area;
+      // Union bbox for layout/hit-testing
+      const newBbox: [number, number, number, number] = [
+        Math.min(...allRects.map((r) => r[0])),
+        Math.min(...allRects.map((r) => r[1])),
+        Math.max(...allRects.map((r) => r[2])),
+        Math.max(...allRects.map((r) => r[3])),
+      ];
+      const bboxW = newBbox[3] - newBbox[1];
+      const bboxH = newBbox[2] - newBbox[0];
+      const { width, height } = calculateDimensions(bboxW, bboxH, newArea);
+
+      const merged = {
+        name: `${roomA.name} + ${roomB.name}`,
+        area: newArea,
+        width,
+        height,
+        bbox: newBbox,
+        subRects: allRects,
+      };
+
+      const insertAt = Math.min(indexA, indexB);
+      const removeAt = Math.max(indexA, indexB);
+      const rooms = [...result.rooms];
+      rooms.splice(removeAt, 1);
+      rooms.splice(insertAt, 1, merged);
+
+      commitResult({ ...result, rooms });
+      setActiveRoom(null);
+    },
+    [result, commitResult],
+  );
+
+  const splitRoom = useCallback(
+    (index: number, orientation: "h" | "v", ratio: number) => {
+      if (!result) return;
+      const room = result.rooms[index];
+      if (!room) return;
+
+      const [ymin, xmin, ymax, xmax] = room.bbox;
+      const area1 = room.area * ratio;
+      const area2 = room.area * (1 - ratio);
+
+      let bbox1: [number, number, number, number];
+      let bbox2: [number, number, number, number];
+
+      if (orientation === "h") {
+        const splitY = ymin + (ymax - ymin) * ratio;
+        bbox1 = [ymin, xmin, splitY, xmax];
+        bbox2 = [splitY, xmin, ymax, xmax];
+      } else {
+        const splitX = xmin + (xmax - xmin) * ratio;
+        bbox1 = [ymin, xmin, ymax, splitX];
+        bbox2 = [ymin, splitX, ymax, xmax];
+      }
+
+      const bboxW1 = bbox1[3] - bbox1[1];
+      const bboxH1 = bbox1[2] - bbox1[0];
+      const dim1 = calculateDimensions(bboxW1, bboxH1, area1);
+
+      const bboxW2 = bbox2[3] - bbox2[1];
+      const bboxH2 = bbox2[2] - bbox2[0];
+      const dim2 = calculateDimensions(bboxW2, bboxH2, area2);
+
+      const room1 = {
+        name: `${room.name} (1)`,
+        area: Number(area1.toFixed(2)),
+        width: dim1.width,
+        height: dim1.height,
+        bbox: bbox1,
+      };
+      const room2 = {
+        name: `${room.name} (2)`,
+        area: Number(area2.toFixed(2)),
+        width: dim2.width,
+        height: dim2.height,
+        bbox: bbox2,
+      };
+
+      const rooms = [...result.rooms];
+      rooms.splice(index, 1, room1, room2);
+
+      commitResult({ ...result, rooms });
+      setActiveRoom(null);
+    },
+    [result, commitResult],
+  );
+
   return {
     image,
     loading,
@@ -276,6 +398,8 @@ export function useFloorPlanAnalyzer({
     updateRoom,
     remeasureRoom,
     moveRoom,
+    mergeRooms,
+    splitRoom,
     undo,
     redo,
     canUndo,

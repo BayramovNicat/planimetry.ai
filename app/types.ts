@@ -4,6 +4,8 @@ export interface Room {
   width: number;
   height: number;
   bbox: [number, number, number, number];
+  /** For merged/composite rooms: individual sub-rectangles preserving original shapes */
+  subRects?: [number, number, number, number][];
 }
 
 export interface AnalysisResult {

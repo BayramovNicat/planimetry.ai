@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProjectsContext } from "../../components/ClientLayout";
 import { useFloorPlanAnalyzer } from "../../hooks/useFloorPlanAnalyzer";
-import { Undo2, Redo2 } from "lucide-react";
+import { Undo2, Redo2, Scissors } from "lucide-react";
 import { Tooltip } from "../../components/Tooltip";
 import { ImageDropZone } from "../../components/ImageDropZone";
 import { ImagePreview } from "../../components/ImagePreview";
@@ -38,6 +38,8 @@ export default function ProjectPage() {
     updateRoom,
     remeasureRoom,
     moveRoom,
+    mergeRooms,
+    splitRoom,
     undo,
     redo,
     canUndo,
@@ -48,6 +50,16 @@ export default function ProjectPage() {
   } = useFloorPlanAnalyzer({ project, onUpdate });
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [splitMode, setSplitMode] = useState(false);
+  const [prevActiveRoom, setPrevActiveRoom] = useState(activeRoom);
+
+  // Reset split mode when active room is deselected
+  if (activeRoom !== prevActiveRoom) {
+    setPrevActiveRoom(activeRoom);
+    if (activeRoom === null) {
+      setSplitMode(false);
+    }
+  }
 
   const handleDrawRect = useCallback(
     (pxW: number, pxH: number) => {
@@ -149,6 +161,25 @@ export default function ProjectPage() {
                       </button>
                     </Tooltip>
                   </div>
+                  {activeRoom !== null && (
+                    <div className="flex items-center gap-2">
+                      <Tooltip label="Split room" side="bottom">
+                        <button
+                          onClick={() => setSplitMode((v) => !v)}
+                          className={`px-2.5 py-1.5 rounded-lg text-sm border transition-colors cursor-pointer ${
+                            splitMode
+                              ? "border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
+                              : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                          }`}
+                        >
+                          <Scissors size={15} />
+                        </button>
+                      </Tooltip>
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        {splitMode ? "Click to split" : "Shift+click to merge"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <FloorPlanCanvas
@@ -159,6 +190,9 @@ export default function ProjectPage() {
                   onSelectRoom={setActiveRoom}
                   onMoveRoom={moveRoom}
                   onUpdateRoom={updateRoom}
+                  splitMode={splitMode}
+                  onSplit={splitRoom}
+                  onMergeRooms={mergeRooms}
                 />
 
                 <RoomCardGrid

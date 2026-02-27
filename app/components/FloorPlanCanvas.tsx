@@ -14,6 +14,9 @@ interface FloorPlanCanvasProps {
   onSelectRoom: (index: number | null) => void;
   onMoveRoom: (index: number, bbox: [number, number, number, number]) => void;
   onUpdateRoom?: (index: number, data: Partial<Room>) => void;
+  splitMode?: boolean;
+  onSplit?: (index: number, orientation: "h" | "v", ratio: number) => void;
+  onMergeRooms?: (indexA: number, indexB: number) => void;
 }
 
 interface LayoutInfo {
@@ -33,6 +36,9 @@ export function FloorPlanCanvas({
   onSelectRoom,
   onMoveRoom,
   onUpdateRoom,
+  splitMode,
+  onSplit,
+  onMergeRooms,
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,14 +77,27 @@ export function FloorPlanCanvas({
       const cy = (ymin + ymax) / 2;
       const halfW = (room.width * pxPerM) / 2;
       const halfH = (room.height * pxPerM) / 2;
+      const newBbox = [
+        cy - halfH,
+        cx - halfW,
+        cy + halfH,
+        cx + halfW,
+      ] as [number, number, number, number];
+
+      // For composite rooms, translate each sub-rect by the same delta as the main bbox
+      let newSubRects: [number, number, number, number][] | undefined;
+      if (room.subRects) {
+        const dy = newBbox[0] - ymin;
+        const dx = newBbox[1] - xmin;
+        newSubRects = room.subRects.map(
+          (r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as [number, number, number, number],
+        );
+      }
+
       return {
         ...room,
-        bbox: [
-          cy - halfH,
-          cx - halfW,
-          cy + halfH,
-          cx + halfW,
-        ] as [number, number, number, number],
+        bbox: newBbox,
+        ...(newSubRects ? { subRects: newSubRects } : {}),
       };
     });
   }, [rooms]);
@@ -98,12 +117,20 @@ export function FloorPlanCanvas({
   const dragBboxRef = useRef<[number, number, number, number] | null>(null);
   const dragSizeRef = useRef<{ w: number; h: number } | null>(null);
   const snapLinesRef = useRef<{ orientation: "h" | "v"; pos: number }[]>([]);
+  const splitPreviewRef = useRef<{
+    mx: number;
+    my: number;
+    snappedMx: number;
+    snappedMy: number;
+    orientation: "h" | "v";
+    snapped: boolean;
+  } | null>(null);
 
   const drawRooms = useCallback(
     (
       highlight: number | null,
       active: number | null,
-      overrideBox?: { index: number; bbox: [number, number, number, number]; isResize?: boolean; tempW?: number; tempH?: number },
+      overrideBox?: { index: number; bbox: [number, number, number, number]; isResize?: boolean; tempW?: number; tempH?: number }, 
     ) => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
@@ -128,12 +155,29 @@ export function FloorPlanCanvas({
         overrideBox && overrideBox.index === i ? overrideBox.bbox : room.bbox,
       );
 
+      // Build effective subRects (translate by same delta as overrideBox)
+      const effectiveSubRects = normalizedRooms.map((room, i) => {
+        if (!room.subRects) return undefined;
+        if (overrideBox && overrideBox.index === i) {
+          const dy = overrideBox.bbox[0] - room.bbox[0];
+          const dx = overrideBox.bbox[1] - room.bbox[1];
+          return room.subRects.map(
+            (r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as [number, number, number, number],
+          );
+        }
+        return room.subRects;
+      });
+
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const [ymin, xmin, ymax, xmax] of bboxes) {
-        if (xmin < minX) minX = xmin;
-        if (ymin < minY) minY = ymin;
-        if (xmax > maxX) maxX = xmax;
-        if (ymax > maxY) maxY = ymax;
+      for (let i = 0; i < bboxes.length; i++) {
+        const subs = effectiveSubRects[i];
+        const toCheck = subs ?? [bboxes[i]];
+        for (const [ymin, xmin, ymax, xmax] of toCheck) {
+          if (xmin < minX) minX = xmin;
+          if (ymin < minY) minY = ymin;
+          if (xmax > maxX) maxX = xmax;
+          if (ymax > maxY) maxY = ymax;
+        }
       }
 
       const bboxW = maxX - minX || 1;
@@ -151,6 +195,7 @@ export function FloorPlanCanvas({
         const color = ROOM_COLORS[i % ROOM_COLORS.length];
         const [ymin, xmin, ymax, xmax] = bboxes[i];
 
+        // Union rect for hit-testing and text centering
         const x = offsetX + (xmin - minX) * scale;
         const y = offsetY + (ymin - minY) * scale;
         const w = (xmax - xmin) * scale;
@@ -162,7 +207,7 @@ export function FloorPlanCanvas({
         const isHighlighted = highlight === i;
         const isDimmed = highlight !== null && !isHighlighted && !isActive;
 
-        ctx.fillStyle = isDragging
+        const fillColor = isDragging
           ? color.border.replace("0.6)", "0.3)")
           : isActive
             ? color.border.replace("0.6)", "0.25)")
@@ -171,22 +216,37 @@ export function FloorPlanCanvas({
               : isDimmed
                 ? "rgba(200,200,200,0.08)"
                 : color.bg;
-        ctx.fillRect(x, y, w, h);
 
-        if (isActive) {
-          ctx.strokeStyle = "#3b82f6";
-          ctx.lineWidth = 3;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(x, y, w, h);
-          ctx.setLineDash([]);
-        } else {
-          ctx.strokeStyle = isDimmed
-            ? "rgba(160,160,160,0.25)"
-            : color.border;
-          ctx.lineWidth = isDragging ? 3 : isHighlighted ? 3 : 2;
-          ctx.strokeRect(x, y, w, h);
+        const subs = effectiveSubRects[i];
+        const drawBoxes = subs
+          ? subs.map(([sy, sx, sy2, sx2]) => ({
+              x: offsetX + (sx - minX) * scale,
+              y: offsetY + (sy - minY) * scale,
+              w: (sx2 - sx) * scale,
+              h: (sy2 - sy) * scale,
+            }))
+          : [{ x, y, w, h }];
+
+        for (const box of drawBoxes) {
+          ctx.fillStyle = fillColor;
+          ctx.fillRect(box.x, box.y, box.w, box.h);
+
+          if (isActive) {                                                                                  
+            ctx.strokeStyle = "#3b82f6";                                                                   
+            ctx.lineWidth = 3;                                                                             
+            ctx.setLineDash([6, 4]);                                                                       
+            ctx.strokeRect(box.x, box.y, box.w, box.h);                                                    
+            ctx.setLineDash([]);                                                                           
+          } else {                                                                                         
+            ctx.strokeStyle = isDimmed                                                                     
+              ? "rgba(160,160,160,0.25)"                                                                   
+              : color.border;                                                                              
+            ctx.lineWidth = isDragging ? 3 : isHighlighted ? 3 : 2;                                        
+            ctx.strokeRect(box.x, box.y, box.w, box.h);
+          }
         }
 
+        // Text centered on union bbox
         const textAlpha = isDimmed ? 0.25 : 1;
         const nameSize = Math.max(11, Math.min(16, Math.min(w, h) / 6));
         const areaSize = Math.max(13, Math.min(22, Math.min(w, h) / 4.5));
@@ -344,23 +404,73 @@ export function FloorPlanCanvas({
         ctx.restore();
       }
 
-      // Draw drag corners if active
-      if (active !== null) {
+      // Draw split preview line
+      const splitPreview = splitPreviewRef.current;
+      if (splitPreview && active !== null) {
         const activeRect = rects[active];
         if (activeRect) {
-          const H_SIZE = 10;
-          ctx.fillStyle = "#ffffff";
-          ctx.strokeStyle = "#3b82f6";
+          ctx.save();
+          ctx.strokeStyle = "rgba(59, 130, 246, 0.8)";
           ctx.lineWidth = 2;
-          const drawHandle = (hx: number, hy: number) => {
-            ctx.fillRect(hx - H_SIZE / 2, hy - H_SIZE / 2, H_SIZE, H_SIZE);
-            ctx.strokeRect(hx - H_SIZE / 2, hy - H_SIZE / 2, H_SIZE, H_SIZE);
-          };
-          // Draw side handles instead of corners
-          drawHandle(activeRect.x + activeRect.w / 2, activeRect.y);
-          drawHandle(activeRect.x + activeRect.w, activeRect.y + activeRect.h / 2);
-          drawHandle(activeRect.x + activeRect.w / 2, activeRect.y + activeRect.h);
-          drawHandle(activeRect.x, activeRect.y + activeRect.h / 2);
+          ctx.setLineDash([6, 4]);
+
+          if (splitPreview.orientation === "h") {
+            const clampedY = Math.max(activeRect.y, Math.min(activeRect.y + activeRect.h, splitPreview.snappedMy));
+            ctx.beginPath();
+            ctx.moveTo(activeRect.x, clampedY);
+            ctx.lineTo(activeRect.x + activeRect.w, clampedY);
+            ctx.stroke();
+
+            // Snap indicator: extend line across canvas
+            if (splitPreview.snapped) {
+              ctx.strokeStyle = "rgba(59,130,246,0.35)";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 3]);
+              ctx.beginPath();
+              ctx.moveTo(0, clampedY);
+              ctx.lineTo(containerWidth, clampedY);
+              ctx.stroke();
+            }
+          } else {
+            const clampedX = Math.max(activeRect.x, Math.min(activeRect.x + activeRect.w, splitPreview.snappedMx));
+            ctx.beginPath();
+            ctx.moveTo(clampedX, activeRect.y);
+            ctx.lineTo(clampedX, activeRect.y + activeRect.h);
+            ctx.stroke();
+
+            // Snap indicator: extend line across canvas
+            if (splitPreview.snapped) {
+              ctx.strokeStyle = "rgba(59,130,246,0.35)";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 3]);
+              ctx.beginPath();
+              ctx.moveTo(clampedX, 0);
+              ctx.lineTo(clampedX, containerHeight);
+              ctx.stroke();
+            }
+          }
+
+          ctx.restore();
+        }
+      }
+
+      // Draw drag corners if active (skip for composite rooms — they have multiple sub-rects)             
+      if (active !== null && !effectiveSubRects[active]) {                                                 
+        const activeRect = rects[active];                                                                  
+        if (activeRect) {                                                                                  
+          const H_SIZE = 10;                                                                               
+          ctx.fillStyle = "#ffffff";                                                                       
+          ctx.strokeStyle = "#3b82f6";                                                                     
+          ctx.lineWidth = 2;                                                                               
+          const drawHandle = (hx: number, hy: number) => {                                                 
+            ctx.fillRect(hx - H_SIZE / 2, hy - H_SIZE / 2, H_SIZE, H_SIZE);                                
+            ctx.strokeRect(hx - H_SIZE / 2, hy - H_SIZE / 2, H_SIZE, H_SIZE);                              
+          };                                                                                               
+          // Draw side handles instead of corners                                                          
+          drawHandle(activeRect.x + activeRect.w / 2, activeRect.y);                                       
+          drawHandle(activeRect.x + activeRect.w, activeRect.y + activeRect.h / 2);                        
+          drawHandle(activeRect.x + activeRect.w / 2, activeRect.y + activeRect.h);                        
+          drawHandle(activeRect.x, activeRect.y + activeRect.h / 2);   
         }
       }
 
@@ -384,6 +494,20 @@ export function FloorPlanCanvas({
     return null;
   }, []);
 
+  // Collect all X and Y edges from a room (sub-rects if composite, bbox otherwise)
+  const getRoomEdges = useCallback((room: typeof normalizedRooms[0]) => {
+    const rects = room.subRects ?? [room.bbox];
+    const xEdges = new Set<number>();
+    const yEdges = new Set<number>();
+    for (const [ymin, xmin, ymax, xmax] of rects) {
+      xEdges.add(xmin);
+      xEdges.add(xmax);
+      yEdges.add(ymin);
+      yEdges.add(ymax);
+    }
+    return { xEdges: [...xEdges], yEdges: [...yEdges] };
+  }, []);
+
   const snapBbox = useCallback(
     (
       dragIndex: number,
@@ -405,9 +529,7 @@ export function FloorPlanCanvas({
 
       for (let i = 0; i < normalizedRooms.length; i++) {
         if (i === dragIndex) continue;
-        const [oymin, oxmin, oymax, oxmax] = normalizedRooms[i].bbox;
-        const otherEdgesX = [oxmin, oxmax];
-        const otherEdgesY = [oymin, oymax];
+        const { xEdges: otherEdgesX, yEdges: otherEdgesY } = getRoomEdges(normalizedRooms[i]);
 
         for (const de of dragEdgesX) {
           for (const oe of otherEdgesX) {
@@ -442,9 +564,10 @@ export function FloorPlanCanvas({
         for (const se of snappedEdgesX) {
           for (let i = 0; i < normalizedRooms.length; i++) {
             if (i === dragIndex) continue;
-            const [, oxmin, , oxmax] = normalizedRooms[i].bbox;
-            if (Math.abs(se - oxmin) < threshold * 0.1) lines.push({ orientation: "v", pos: se });
-            if (Math.abs(se - oxmax) < threshold * 0.1) lines.push({ orientation: "v", pos: se });
+            const { xEdges } = getRoomEdges(normalizedRooms[i]);
+            for (const oe of xEdges) {
+              if (Math.abs(se - oe) < threshold * 0.1) lines.push({ orientation: "v", pos: se });
+            }
           }
         }
       }
@@ -453,16 +576,17 @@ export function FloorPlanCanvas({
         for (const se of snappedEdgesY) {
           for (let i = 0; i < normalizedRooms.length; i++) {
             if (i === dragIndex) continue;
-            const [oymin, , oymax] = normalizedRooms[i].bbox;
-            if (Math.abs(se - oymin) < threshold * 0.1) lines.push({ orientation: "h", pos: se });
-            if (Math.abs(se - oymax) < threshold * 0.1) lines.push({ orientation: "h", pos: se });
+            const { yEdges } = getRoomEdges(normalizedRooms[i]);
+            for (const oe of yEdges) {
+              if (Math.abs(se - oe) < threshold * 0.1) lines.push({ orientation: "h", pos: se });
+            }
           }
         }
       }
 
       return { bbox: snappedBbox, lines };
     },
-    [normalizedRooms],
+    [normalizedRooms, getRoomEdges],
   );
 
   const handleMouseDown = useCallback(
@@ -473,32 +597,61 @@ export function FloorPlanCanvas({
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
 
+      // Split mode: click to split the active room
+      if (splitMode && activeRoom !== null && onSplit) {
+        const { rects } = layoutRef.current;
+        const activeRect = rects[activeRoom];
+        if (activeRect && mx >= activeRect.x && mx <= activeRect.x + activeRect.w && my >= activeRect.y && my <= activeRect.y + activeRect.h) {
+          e.preventDefault();
+          const preview = splitPreviewRef.current;
+          if (preview) {
+            if (preview.orientation === "h") {
+              const clampedY = Math.max(activeRect.y, Math.min(activeRect.y + activeRect.h, preview.snappedMy));
+              const ratio = (clampedY - activeRect.y) / activeRect.h;
+              if (ratio > 0.05 && ratio < 0.95) {
+                splitPreviewRef.current = null;
+                onSplit(activeRoom, "h", ratio);
+              }
+            } else {
+              const clampedX = Math.max(activeRect.x, Math.min(activeRect.x + activeRect.w, preview.snappedMx));
+              const ratio = (clampedX - activeRect.x) / activeRect.w;
+              if (ratio > 0.05 && ratio < 0.95) {
+                splitPreviewRef.current = null;
+                onSplit(activeRoom, "v", ratio);
+              }
+            }
+          }
+          return;
+        }
+      }
+
       const { rects } = layoutRef.current;
 
-      // Hit test handles first
-      if (activeRoom !== null && activeRoom < normalizedRooms.length) {
-        const activeRect = rects[activeRoom];
-        if (activeRect) {
-          const H_SIZE = 12; // slightly larger hit area
+      // Hit test handles
+      if (activeRoom !== null && activeRoom < normalizedRooms.length && !normalizedRooms[activeRoom].subRects) {
+        const activeRect = rects[activeRoom];                                                              
+        if (activeRect) {                                                                                  
+          const H_SIZE = 12; // slightly larger hit area         
+
           const handles = [
-            { side: "top" as const, x: activeRect.x + activeRect.w / 2, y: activeRect.y },
+            { side: "top" as const, x: activeRect.x + activeRect.w / 2, y: activeRect.y },                 
             { side: "right" as const, x: activeRect.x + activeRect.w, y: activeRect.y + activeRect.h / 2 },
             { side: "bottom" as const, x: activeRect.x + activeRect.w / 2, y: activeRect.y + activeRect.h },
-            { side: "left" as const, x: activeRect.x, y: activeRect.y + activeRect.h / 2 },
+            { side: "left" as const, x: activeRect.x, y: activeRect.y + activeRect.h / 2 },  
           ];
           for (const h of handles) {
             if (Math.abs(mx - h.x) <= H_SIZE && Math.abs(my - h.y) <= H_SIZE) {
               e.preventDefault();
-              const nRoom = normalizedRooms[activeRoom];
+              const nRoom = normalizedRooms[activeRoom]; 
               dragRef.current = {
                 index: activeRoom,
                 type: "resize",
                 side: h.side,
                 startMx: mx,
                 startMy: my,
-                origBbox: [...nRoom.bbox],
-                origWidth: nRoom.width,
-                origHeight: nRoom.height,
+                origBbox: [...nRoom.bbox],                                                                 
+                origWidth: nRoom.width,                                                                    
+                origHeight: nRoom.height, 
                 moved: false,
               };
               dragBboxRef.current = null;
@@ -529,7 +682,7 @@ export function FloorPlanCanvas({
         snapLinesRef.current = [];
       }
     },
-    [hitTest, normalizedRooms, activeRoom],
+    [hitTest, normalizedRooms, activeRoom, splitMode, onSplit],
   );
 
   const handleMouseMove = useCallback(
@@ -539,6 +692,56 @@ export function FloorPlanCanvas({
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
+
+      // Split mode: show preview line on hover
+      if (splitMode && activeRoom !== null) {
+        const { rects, scale, offsetX, offsetY, minX, minY } = layoutRef.current;
+        const activeRect = rects[activeRoom];
+        if (activeRect && mx >= activeRect.x && mx <= activeRect.x + activeRect.w && my >= activeRect.y && my <= activeRect.y + activeRect.h) {
+          // Determine orientation: horizontal if cursor is closer to a horizontal edge
+          const relX = (mx - activeRect.x) / activeRect.w - 0.5;
+          const relY = (my - activeRect.y) / activeRect.h - 0.5;
+          const orientation: "h" | "v" = Math.abs(relY) > Math.abs(relX) ? "h" : "v";
+
+          // Snap to nearby room walls
+          let snappedMx = mx;
+          let snappedMy = my;
+          let snapped = false;
+
+          for (let i = 0; i < normalizedRooms.length; i++) {
+            if (i === activeRoom) continue;
+            const { xEdges, yEdges } = getRoomEdges(normalizedRooms[i]);
+
+            if (orientation === "h") {
+              for (const yEdge of yEdges) {
+                const screenY = offsetY + (yEdge - minY) * scale;
+                if (Math.abs(my - screenY) < SNAP_PX) {
+                  snappedMy = screenY;
+                  snapped = true;
+                }
+              }
+            } else {
+              for (const xEdge of xEdges) {
+                const screenX = offsetX + (xEdge - minX) * scale;
+                if (Math.abs(mx - screenX) < SNAP_PX) {
+                  snappedMx = screenX;
+                  snapped = true;
+                }
+              }
+            }
+          }
+
+          splitPreviewRef.current = { mx, my, snappedMx, snappedMy, orientation, snapped };
+          canvas.style.cursor = "crosshair";
+          drawRooms(highlightIndex, activeRoom);
+          return;
+        } else {
+          if (splitPreviewRef.current) {
+            splitPreviewRef.current = null;
+            drawRooms(highlightIndex, activeRoom);
+          }
+        }
+      }
 
       const drag = dragRef.current;
 
@@ -595,8 +798,8 @@ export function FloorPlanCanvas({
 
           for (let i = 0; i < normalizedRooms.length; i++) {
             if (i === drag.index) continue;
-            const [oymin, oxmin, oymax, oxmax] = normalizedRooms[i].bbox;
-            const targets = orientation === "v" ? [oxmin, oxmax] : [oymin, oymax];
+            const { xEdges, yEdges } = getRoomEdges(normalizedRooms[i]);
+            const targets = orientation === "v" ? xEdges : yEdges;
             for (const t of targets) {
               const dist = Math.abs(movingEdge - t);
               if (dist < snapThreshold && dist < bestDist) {
@@ -722,34 +925,47 @@ export function FloorPlanCanvas({
         }
       }
     },
-    [hitTest, onHoverRoom, snapBbox, drawRooms, activeRoom, normalizedRooms],
+    [hitTest, onHoverRoom, drawRooms, highlightIndex, activeRoom, snapBbox, normalizedRooms, getRoomEdges, splitMode],
   );
 
   const handleMouseUp = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Split mode clicks are handled in handleMouseDown, so just return if in split mode
+      if (splitMode && activeRoom !== null) {
+        return;
+      }
+
       const drag = dragRef.current;
       if (!drag) {
         // Clicked on empty canvas — deselect active room
-        if (activeRoom !== null) {
-          const canvas = canvasRef.current;
-          if (canvas) {
-            const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            if (hitTest(mx, my) === null) {
-              onSelectRoom(null);
-            }
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
+          const found = hitTest(mx, my);
+
+          // Shift+click merge
+          if (e.shiftKey && activeRoom !== null && found !== null && found !== activeRoom && onMergeRooms) {
+            onMergeRooms(activeRoom, found);
+            return;
+          }
+
+          if (found === null && activeRoom !== null) {
+            onSelectRoom(null);
+          } else if (found !== null) {
+            onSelectRoom(found === activeRoom ? null : found);
           }
         }
         return;
       }
 
       if (drag.moved && dragBboxRef.current) {
-        if (drag.type === "resize" && dragSizeRef.current && onUpdateRoom) {
-          onUpdateRoom(drag.index, { 
-            width: dragSizeRef.current.w, 
-            height: dragSizeRef.current.h, 
-            bbox: dragBboxRef.current 
+        if (drag.type === "resize" && dragSizeRef.current && onUpdateRoom) { 
+          onUpdateRoom(drag.index, {
+            width: dragSizeRef.current.w,
+            height: dragSizeRef.current.h,
+            bbox: dragBboxRef.current
           });
         } else {
           onMoveRoom(drag.index, dragBboxRef.current);
@@ -762,6 +978,17 @@ export function FloorPlanCanvas({
           const mx = e.clientX - rect.left;
           const my = e.clientY - rect.top;
           const found = hitTest(mx, my);
+
+          // Shift+click merge
+          if (e.shiftKey && activeRoom !== null && found !== null && found !== activeRoom && onMergeRooms) {
+            onMergeRooms(activeRoom, found);
+            dragRef.current = null;
+            dragBboxRef.current = null;
+            dragSizeRef.current = null;
+            snapLinesRef.current = [];
+            return;
+          }
+
           onSelectRoom(found === activeRoom ? null : found);
         }
       }
@@ -782,7 +1009,7 @@ export function FloorPlanCanvas({
 
       drawRooms(highlightIndex, activeRoom);
     },
-    [onMoveRoom, onSelectRoom, activeRoom, hitTest, drawRooms, highlightIndex, onUpdateRoom],
+    [onMoveRoom, onSelectRoom, activeRoom, hitTest, drawRooms, highlightIndex, onUpdateRoom, onMergeRooms, splitMode],
   );
 
   const handleMouseLeave = useCallback(() => {
