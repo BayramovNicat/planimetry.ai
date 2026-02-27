@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { Upload } from "lucide-react";
 
 interface ImageDropZoneProps {
   onFile: (file: File) => void;
@@ -14,14 +15,14 @@ export function ImageDropZone({ onFile, onDrop, fileInputRef }: ImageDropZonePro
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
       onClick={() => fileInputRef.current?.click()}
-      className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-16 text-center cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors bg-white dark:bg-zinc-900"
+      className="border border-zinc-200 dark:border-zinc-800 rounded-xl py-16 px-8 text-center cursor-pointer hover:bg-zinc-100/50 dark:hover:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
     >
-      <div className="text-5xl mb-4">📐</div>
-      <p className="text-lg font-medium text-zinc-700 dark:text-zinc-300">
-        Drop a floor plan image here
+      <Upload size={32} className="mx-auto mb-4 text-zinc-400" />
+      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Upload a floor plan to analyze
       </p>
-      <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-2">
-        or click to browse — you can also paste with Ctrl+V
+      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
+        Drag and drop, browse, or Ctrl+V to paste
       </p>
       <input
         ref={fileInputRef}

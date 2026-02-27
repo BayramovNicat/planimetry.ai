@@ -56,12 +56,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 md:p-12">
-      <div className="max-w-4xl mx-auto pt-8">
+      <div className="max-w-3xl mx-auto pt-12">
         <h1 className="text-3xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">
-          Floor Plan Analyzer
+          Analyze Floor Plan
         </h1>
         <p className="text-zinc-500 dark:text-zinc-400 mb-8">
-          Upload or paste a floor plan image to extract room dimensions
+          Upload an image to get started
         </p>
 
         <ImageDropZone

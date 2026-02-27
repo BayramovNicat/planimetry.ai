@@ -77,14 +77,25 @@ export function Sidebar({
 
   return (
     <>
-      {/* Toggle button — always visible */}
-      <button
-        onClick={onToggle}
-        className="fixed top-3 left-3 z-50 w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
-        title={collapsed ? "Open sidebar" : "Close sidebar"}
-      >
-        <Menu size={20} className="text-zinc-600 dark:text-zinc-400" />
-      </button>
+      {/* Toggle button + new plan shortcut — always visible */}
+      <div className="fixed top-3 left-3 z-50 flex flex-col items-center gap-1">
+        <button
+          onClick={onToggle}
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
+          title={collapsed ? "Open sidebar" : "Close sidebar"}
+        >
+          <Menu size={20} className="text-zinc-600 dark:text-zinc-400" />
+        </button>
+        {collapsed && (
+          <Link
+            href="/"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
+            title="New plan"
+          >
+            <Plus size={20} className="text-zinc-600 dark:text-zinc-400" />
+          </Link>
+        )}
+      </div>
 
       {/* Backdrop for mobile when open */}
       {!collapsed && (
@@ -96,19 +107,19 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed top-0 left-0 h-full w-[260px] bg-zinc-100/80 dark:bg-zinc-900/80 backdrop-blur-xl z-40 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full w-[260px] bg-zinc-50 dark:bg-zinc-950 z-40 flex flex-col transition-transform duration-300 ease-in-out ${
           collapsed ? "-translate-x-full" : "translate-x-0"
         }`}
       >
-        {/* Header area with toggle + new button */}
-        <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+        {/* Header area */}
+        <div className="px-3 pt-3 pb-2">
           {/* Spacer for the toggle button */}
-          <div className="w-10 h-10 shrink-0" />
+          <div className="w-10 h-10" />
 
-          {/* New analysis button */}
+          {/* New plan button */}
           <Link
             href="/"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300/80 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-sm font-medium transition-colors"
           >
             <Plus size={18} />
             New plan
@@ -131,7 +142,7 @@ export function Sidebar({
             return (
               <div
                 key={project.id}
-                className={`group relative flex items-center rounded-lg text-sm transition-colors ${
+                className={`group relative flex items-center rounded-lg text-[13px] transition-colors ${
                   isActive
                     ? "bg-zinc-200/80 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100"
                     : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
@@ -174,7 +185,7 @@ export function Sidebar({
 
                       {/* Dropdown */}
                       {isMenuOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 py-1 z-50">
+                        <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 py-1 z-50">
                           <button
                             onClick={() => startRename(project.id, project.name)}
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"

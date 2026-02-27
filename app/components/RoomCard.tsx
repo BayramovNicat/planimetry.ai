@@ -30,6 +30,7 @@ export function RoomCard({
   const [editingField, setEditingField] = useState<"name" | "area" | null>(null);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const color = ROOM_COLORS[colorIndex % ROOM_COLORS.length];
 
   useEffect(() => {
     if (editingField && inputRef.current) {
@@ -74,41 +75,45 @@ export function RoomCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onSelect}
-      className={`rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 transition-all cursor-pointer ${
+      className={`rounded-lg p-3 border border-zinc-200/60 dark:border-zinc-800/60 transition-all cursor-pointer ${
         isActive
-          ? "ring-2 ring-blue-500 shadow-lg scale-[1.02]"
+          ? "ring-1 ring-blue-500"
           : isHighlighted
-            ? "ring-2 shadow-lg scale-[1.02]"
+            ? "ring-1"
             : isDimmed
-              ? "opacity-40"
+              ? "opacity-50"
               : ""
       }`}
-      style={{
-        borderLeftWidth: 4,
-        borderLeftColor: ROOM_COLORS[colorIndex % ROOM_COLORS.length].border,
-        ...(isHighlighted && !isActive
-          ? { ringColor: ROOM_COLORS[colorIndex % ROOM_COLORS.length].border }
-          : {}),
-      }}
+      style={
+        isHighlighted && !isActive
+          ? { outlineColor: color.border }
+          : undefined
+      }
     >
-      {editingField === "name" ? (
-        <input
-          ref={inputRef}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1 bg-transparent border-b border-blue-500 outline-none w-full"
+      <div className="flex items-center gap-2 mb-1">
+        <div
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ backgroundColor: color.text }}
         />
-      ) : (
-        <p
-          className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-          onDoubleClick={(e) => startEdit("name", e)}
-        >
-          {room.name}
-        </p>
-      )}
+        {editingField === "name" ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-medium text-zinc-900 dark:text-zinc-100 bg-transparent border-b border-blue-500 outline-none w-full"
+          />
+        ) : (
+          <p
+            className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            onDoubleClick={(e) => startEdit("name", e)}
+          >
+            {room.name}
+          </p>
+        )}
+      </div>
 
       {editingField === "area" ? (
         <div className="flex items-baseline gap-1">
@@ -122,20 +127,20 @@ export function RoomCard({
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="text-2xl font-bold text-zinc-800 dark:text-zinc-200 bg-transparent border-b border-blue-500 outline-none w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 bg-transparent border-b border-blue-500 outline-none w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
-          <span className="text-2xl font-bold text-zinc-800 dark:text-zinc-200">m²</span>
+          <span className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">m²</span>
         </div>
       ) : (
         <p
-          className="text-2xl font-bold text-zinc-800 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           onDoubleClick={(e) => startEdit("area", e)}
         >
           {room.area} m²
         </p>
       )}
 
-      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
         {room.width}m × {room.height}m
       </p>
     </div>

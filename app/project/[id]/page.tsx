@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProjectsContext } from "../../components/ClientLayout";
 import { useFloorPlanAnalyzer } from "../../hooks/useFloorPlanAnalyzer";
+import { Undo2, Redo2 } from "lucide-react";
 import { ImageDropZone } from "../../components/ImageDropZone";
 import { ImagePreview } from "../../components/ImagePreview";
 import { FloorPlanCanvas } from "../../components/FloorPlanCanvas";
@@ -90,14 +91,11 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 md:p-12">
-      <div className="max-w-4xl mx-auto pt-8">
-        <h1 className="text-3xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto pt-12">
+        <h1 className="text-xl font-semibold mb-6 text-zinc-900 dark:text-zinc-100">
           {project.name}
         </h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-8">
-          Upload or paste a floor plan image to extract room dimensions
-        </p>
 
         {!image && (
           <ImageDropZone
@@ -126,7 +124,7 @@ export default function ProjectPage() {
               <div ref={canvasRef} className="space-y-6">
                 <div className="flex items-center gap-3 flex-wrap">
                   {result.total_area && (
-                    <div className="inline-block px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-semibold">
+                    <div className="inline-block text-xs px-3 py-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold">
                       Total area: {result.total_area} m²
                     </div>
                   )}
@@ -137,7 +135,7 @@ export default function ProjectPage() {
                       title="Undo (Ctrl+Z)"
                       className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                     >
-                      ↩
+                      <Undo2 size={15} />
                     </button>
                     <button
                       onClick={redo}
@@ -145,7 +143,7 @@ export default function ProjectPage() {
                       title="Redo (Ctrl+Shift+Z)"
                       className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                     >
-                      ↪
+                      <Redo2 size={15} />
                     </button>
                   </div>
                 </div>

@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 
 const TIPS = [
-  "Detecting walls and boundaries",
-  "Measuring room dimensions",
-  "Identifying room types",
-  "Calculating areas",
-  "Mapping the layout",
+  "Detecting boundaries",
+  "Measuring dimensions",
+  "Classifying rooms",
+  "Computing areas",
+  "Generating layout",
 ];
 
 export function LoadingSkeleton() {
@@ -36,7 +36,7 @@ export function LoadingSkeleton() {
       <div className="h-6 flex items-center">
         <p
           key={tipIndex}
-          className="text-sm font-medium text-white/80 loading-dots loading-tip-fade"
+          className="text-[13px] font-medium text-white/70 loading-dots loading-tip-fade"
         >
           {TIPS[tipIndex]}
         </p>

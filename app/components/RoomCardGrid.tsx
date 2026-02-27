@@ -14,7 +14,7 @@ interface RoomCardGridProps {
 
 export function RoomCardGrid({ rooms, hoveredRoom, onHoverRoom, activeRoom, onSelectRoom, onUpdateRoom }: RoomCardGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       {rooms.map((room, i) => (
         <RoomCard
           key={i}

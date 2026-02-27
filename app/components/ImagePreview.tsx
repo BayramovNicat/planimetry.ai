@@ -72,7 +72,7 @@ export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePrev
   return (
     <div
       ref={containerRef}
-      className="relative rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+      className="relative rounded-xl overflow-hidden border border-zinc-200/60 dark:border-zinc-800/60"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -94,12 +94,12 @@ export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePrev
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <div className="absolute top-3 left-3 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full pointer-events-none">
+          <div className="absolute top-3 left-3 bg-zinc-900/80 text-white text-[11px] px-2.5 py-1 rounded-full pointer-events-none">
             Draw a rectangle over this room
           </div>
           {rectStyle && (
             <div
-              className="absolute border-2 border-dashed border-white/90 bg-white/10"
+              className="absolute border-2 border-blue-500/70 bg-blue-500/5"
               style={rectStyle}
             />
           )}
