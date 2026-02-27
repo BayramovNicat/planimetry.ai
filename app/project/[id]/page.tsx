@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { Redo2, Scissors,Undo2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useCallback,useEffect, useRef, useState } from "react";
+
 import { useProjectsContext } from "../../components/ClientLayout";
-import { useFloorPlanAnalyzer } from "../../hooks/useFloorPlanAnalyzer";
-import { Undo2, Redo2, Scissors } from "lucide-react";
-import { Tooltip } from "../../components/Tooltip";
+import { FloorPlanCanvas } from "../../components/FloorPlanCanvas";
 import { ImageDropZone } from "../../components/ImageDropZone";
 import { ImagePreview } from "../../components/ImagePreview";
-import { FloorPlanCanvas } from "../../components/FloorPlanCanvas";
-import { RoomCardGrid } from "../../components/RoomCardGrid";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
+import { RoomCardGrid } from "../../components/RoomCardGrid";
+import { Tooltip } from "../../components/Tooltip";
+import { useFloorPlanAnalyzer } from "../../hooks/useFloorPlanAnalyzer";
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>();
@@ -104,18 +105,14 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 md:p-8">
-      <div className="max-w-3xl mx-auto pt-12">
-        <h1 className="text-xl font-semibold mb-6 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 p-4 md:p-8 dark:bg-zinc-950">
+      <div className="mx-auto max-w-3xl pt-12">
+        <h1 className="mb-6 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
           {project.name}
         </h1>
 
         {!image && (
-          <ImageDropZone
-            onFile={handleFile}
-            onDrop={handleDrop}
-            fileInputRef={fileInputRef}
-          />
+          <ImageDropZone onFile={handleFile} onDrop={handleDrop} fileInputRef={fileInputRef} />
         )}
 
         {image && (
@@ -128,16 +125,16 @@ export default function ProjectPage() {
             />
 
             {error && (
-              <div className="rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4 text-red-700 dark:text-red-300 text-sm">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
                 {error}
               </div>
             )}
 
             {result && (
               <div ref={canvasRef} className="space-y-6">
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex flex-wrap items-center gap-3">
                   {result.total_area && (
-                    <div className="inline-block text-xs px-3 py-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold">
+                    <div className="inline-block rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
                       Total area: {result.total_area} m²
                     </div>
                   )}
@@ -146,7 +143,7 @@ export default function ProjectPage() {
                       <button
                         onClick={undo}
                         disabled={!canUndo}
-                        className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        className="cursor-pointer rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                       >
                         <Undo2 size={15} />
                       </button>
@@ -155,7 +152,7 @@ export default function ProjectPage() {
                       <button
                         onClick={redo}
                         disabled={!canRedo}
-                        className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                        className="cursor-pointer rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                       >
                         <Redo2 size={15} />
                       </button>
@@ -166,10 +163,10 @@ export default function ProjectPage() {
                       <Tooltip label="Split room" side="bottom">
                         <button
                           onClick={() => setSplitMode((v) => !v)}
-                          className={`px-2.5 py-1.5 rounded-lg text-sm border transition-colors cursor-pointer ${
+                          className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
                             splitMode
-                              ? "border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
-                              : "border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                              ? "border-blue-400 bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                              : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                           }`}
                         >
                           <Scissors size={15} />

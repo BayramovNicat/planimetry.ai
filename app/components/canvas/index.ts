@@ -1,17 +1,11 @@
 export * from "./canvasTypes";
-export { normalizeRooms } from "./normalizeRooms";
 export {
-  getRoomEdges,
-  snapBbox,
-  snapSplitPosition,
-  hitTest,
-  SNAP_PX,
-} from "./snapUtils";
-export {
+  drawMeasurementLabels,
+  drawResizeHandles,
   drawRoomFillsAndBorders,
   drawRoomLabels,
-  drawMeasurementLabels,
   drawSnapLines,
   drawSplitPreview,
-  drawResizeHandles,
 } from "./drawHelpers";
+export { normalizeRooms } from "./normalizeRooms";
+export { getRoomEdges, hitTest, SNAP_PX,snapBbox, snapSplitPosition } from "./snapUtils";

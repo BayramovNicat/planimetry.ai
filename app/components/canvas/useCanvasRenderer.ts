@@ -1,19 +1,14 @@
-import { useRef, useCallback } from "react";
+import { useCallback,useRef } from "react";
+
 import type { Room } from "../../types";
-import type {
-  LayoutInfo,
-  Bbox,
-  OverrideBox,
-  SnapLine,
-  SplitPreview,
-} from "./canvasTypes";
+import type { Bbox, LayoutInfo, OverrideBox, SnapLine, SplitPreview } from "./canvasTypes";
 import {
+  drawMeasurementLabels,
+  drawResizeHandles,
   drawRoomFillsAndBorders,
   drawRoomLabels,
-  drawMeasurementLabels,
   drawSnapLines,
   drawSplitPreview,
-  drawResizeHandles,
 } from "./drawHelpers";
 
 /**
@@ -52,10 +47,7 @@ export function useCanvasRenderer(
 
       const dpr = window.devicePixelRatio || 1;
       const containerWidth = container.clientWidth;
-      const containerHeight = Math.max(
-        400,
-        Math.min(600, containerWidth * 0.7),
-      );
+      const containerHeight = Math.max(400, Math.min(600, containerWidth * 0.7));
 
       canvas.width = containerWidth * dpr;
       canvas.height = containerHeight * dpr;
@@ -73,19 +65,15 @@ export function useCanvasRenderer(
       );
 
       // Build effective subRects (translate by same delta as overrideBox)
-      const effectiveSubRects: (Bbox[] | undefined)[] = normalizedRooms.map(
-        (room, i) => {
-          if (!room.subRects) return undefined;
-          if (overrideBox && overrideBox.index === i) {
-            const dy = overrideBox.bbox[0] - room.bbox[0];
-            const dx = overrideBox.bbox[1] - room.bbox[1];
-            return room.subRects.map(
-              (r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as Bbox,
-            );
-          }
-          return room.subRects;
-        },
-      );
+      const effectiveSubRects: (Bbox[] | undefined)[] = normalizedRooms.map((room, i) => {
+        if (!room.subRects) return undefined;
+        if (overrideBox && overrideBox.index === i) {
+          const dy = overrideBox.bbox[0] - room.bbox[0];
+          const dx = overrideBox.bbox[1] - room.bbox[1];
+          return room.subRects.map((r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as Bbox);
+        }
+        return room.subRects;
+      });
 
       // Compute bounds
       let minX = Infinity,
@@ -146,14 +134,7 @@ export function useCanvasRenderer(
       );
 
       // 2. Room labels
-      drawRoomLabels(
-        ctx,
-        normalizedRooms,
-        rects,
-        highlight,
-        active,
-        overrideBox,
-      );
+      drawRoomLabels(ctx, normalizedRooms, rects, highlight, active, overrideBox);
 
       // 3. Measurement labels
       drawMeasurementLabels(dc, normalizedRooms, bboxes, effectiveSubRects);

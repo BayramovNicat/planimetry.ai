@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "./Sidebar";
+import { createContext, useContext, useState } from "react";
+
 import { useProjects } from "../hooks/useProjects";
 import type { Project } from "../types";
+import { Sidebar } from "./Sidebar";
 
 interface ProjectsContextValue {
   projects: Project[];

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import type { Project, AnalysisResult } from "../types";
+import { useCallback, useEffect, useRef,useState } from "react";
+
+import type { AnalysisResult,Project } from "../types";
 
 const STORAGE_KEY = "planimetry-projects";
 const OLD_SESSION_KEY = "planimetry-session";
@@ -106,9 +107,7 @@ export function useProjects() {
 
   const updateProject = useCallback(
     (id: string, partial: Partial<Pick<Project, "image" | "result" | "name">>) => {
-      const next = projects.map((p) =>
-        p.id === id ? { ...p, ...partial } : p,
-      );
+      const next = projects.map((p) => (p.id === id ? { ...p, ...partial } : p));
       persist(next);
     },
     [projects, persist],

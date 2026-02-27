@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect,useRef, useState } from "react";
+
 import type { AnalysisResult, Project } from "../types";
 import { calculateDimensions } from "../utils/dimensions";
 
@@ -20,15 +21,10 @@ interface UseFloorPlanAnalyzerOptions {
   onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void;
 }
 
-export function useFloorPlanAnalyzer({
-  project,
-  onUpdate,
-}: UseFloorPlanAnalyzerOptions) {
+export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzerOptions) {
   const [image, setImage] = useState<string | null>(project?.image ?? null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(
-    project?.result ?? null,
-  );
+  const [result, setResult] = useState<AnalysisResult | null>(project?.result ?? null);
   const [error, setError] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<number | null>(null);
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
@@ -207,9 +203,7 @@ export function useFloorPlanAnalyzer({
       if (fields.height !== undefined) updated.height = fields.height;
       if (fields.bbox !== undefined) updated.bbox = fields.bbox;
 
-      const updatedRooms = result.rooms.map((r, i) =>
-        i === index ? updated : r,
-      );
+      const updatedRooms = result.rooms.map((r, i) => (i === index ? updated : r));
       commitResult({ ...result, rooms: updatedRooms });
     },
     [result, commitResult],
@@ -227,19 +221,11 @@ export function useFloorPlanAnalyzer({
       const updated: Partial<typeof room> & { bbox: typeof bbox } = { bbox };
       if (room.subRects) {
         updated.subRects = room.subRects.map(
-          (r) =>
-            [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as [
-              number,
-              number,
-              number,
-              number,
-            ],
+          (r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as [number, number, number, number],
         );
       }
 
-      const updatedRooms = result.rooms.map((r, i) =>
-        i === index ? { ...r, ...updated } : r,
-      );
+      const updatedRooms = result.rooms.map((r, i) => (i === index ? { ...r, ...updated } : r));
       commitResult({ ...result, rooms: updatedRooms });
     },
     [result, commitResult],
@@ -252,8 +238,7 @@ export function useFloorPlanAnalyzer({
       if (!room) return;
 
       const aspectRatio = pxWidth / pxHeight;
-      const newHeight =
-        Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
+      const newHeight = Math.round(Math.sqrt(room.area / aspectRatio) * 10) / 10;
       const newWidth = Math.round((room.area / newHeight) * 10) / 10;
 
       const [ymin, xmin, ymax, xmax] = room.bbox;
@@ -272,9 +257,7 @@ export function useFloorPlanAnalyzer({
       ];
 
       const updatedRooms = result.rooms.map((r, i) =>
-        i === index
-          ? { ...r, width: newWidth, height: newHeight, bbox: newBbox }
-          : r,
+        i === index ? { ...r, width: newWidth, height: newHeight, bbox: newBbox } : r,
       );
       commitResult({ ...result, rooms: updatedRooms });
       setActiveRoom(null);
@@ -290,12 +273,8 @@ export function useFloorPlanAnalyzer({
       if (!roomA || !roomB) return;
 
       // Collect all sub-rects (flatten if either is already composite)
-      const rectsA: [number, number, number, number][] = roomA.subRects ?? [
-        roomA.bbox,
-      ];
-      const rectsB: [number, number, number, number][] = roomB.subRects ?? [
-        roomB.bbox,
-      ];
+      const rectsA: [number, number, number, number][] = roomA.subRects ?? [roomA.bbox];
+      const rectsB: [number, number, number, number][] = roomB.subRects ?? [roomB.bbox];
       const allRects = [...rectsA, ...rectsB];
 
       const newArea = roomA.area + roomB.area;

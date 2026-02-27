@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useEffect, useMemo,useRef } from "react";
+
 import type { Room } from "../types";
 import { normalizeRooms } from "./canvas/normalizeRooms";
-import { useCanvasRenderer } from "./canvas/useCanvasRenderer";
 import { useCanvasInteraction } from "./canvas/useCanvasInteraction";
+import { useCanvasRenderer } from "./canvas/useCanvasRenderer";
 
 interface FloorPlanCanvasProps {
   rooms: Room[];
@@ -62,11 +63,11 @@ export function FloorPlanCanvas({
   return (
     <div
       ref={containerRef}
-      className="w-full rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+      className="w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
     >
       <canvas
         ref={canvasRef}
-        className="w-full block"
+        className="block w-full"
         style={{ cursor: "pointer" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

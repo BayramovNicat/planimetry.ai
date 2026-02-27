@@ -1,4 +1,4 @@
-import type { Room, Bbox, ScreenRect, SnapLine } from "./canvasTypes";
+import type { Bbox, Room, ScreenRect, SnapLine } from "./canvasTypes";
 
 export const SNAP_PX = 8;
 
@@ -73,8 +73,7 @@ export function snapBbox(
         if (i === dragIndex) continue;
         const { xEdges } = getRoomEdges(rooms[i]);
         for (const oe of xEdges) {
-          if (Math.abs(se - oe) < threshold * 0.1)
-            lines.push({ orientation: "v", pos: se });
+          if (Math.abs(se - oe) < threshold * 0.1) lines.push({ orientation: "v", pos: se });
         }
       }
     }
@@ -86,8 +85,7 @@ export function snapBbox(
         if (i === dragIndex) continue;
         const { yEdges } = getRoomEdges(rooms[i]);
         for (const oe of yEdges) {
-          if (Math.abs(se - oe) < threshold * 0.1)
-            lines.push({ orientation: "h", pos: se });
+          if (Math.abs(se - oe) < threshold * 0.1) lines.push({ orientation: "h", pos: se });
         }
       }
     }
@@ -143,11 +141,7 @@ export function snapSplitPosition(
 }
 
 /** Hit test: find the topmost room index under a screen coordinate */
-export function hitTest(
-  mx: number,
-  my: number,
-  rects: ScreenRect[],
-): number | null {
+export function hitTest(mx: number, my: number, rects: ScreenRect[]): number | null {
   for (let i = rects.length - 1; i >= 0; i--) {
     const r = rects[i];
     if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {

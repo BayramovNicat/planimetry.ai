@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { calculateDimensions } from "../../utils/dimensions";
 
 const PROMPT = `Extract all rooms from this floor plan. For each room return its name, area in m², and bounding box.
@@ -24,10 +25,7 @@ async function callGemini(
     body: JSON.stringify({
       contents: [
         {
-          parts: [
-            { inlineData: { mimeType, data: base64Data } },
-            { text: PROMPT },
-          ],
+          parts: [{ inlineData: { mimeType, data: base64Data } }, { text: PROMPT }],
         },
       ],
       generationConfig: {
@@ -55,10 +53,7 @@ async function callGemini(
 export async function POST(request: NextRequest) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
-    return NextResponse.json(
-      { error: "GEMINI_API_KEY not configured" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
   }
 
   let body: { image: string };
@@ -85,12 +80,7 @@ export async function POST(request: NextRequest) {
   const base64Data = match[2];
 
   try {
-    const res = await callGemini(
-      GEMINI_API_KEY,
-      mimeType,
-      base64Data,
-      AbortSignal.timeout(30_000),
-    );
+    const res = await callGemini(GEMINI_API_KEY, mimeType, base64Data, AbortSignal.timeout(30_000));
 
     let parsed: {
       total_area: number | null;
@@ -100,10 +90,7 @@ export async function POST(request: NextRequest) {
       parsed = JSON.parse(res);
     } catch {
       console.error("Parse failed:", res);
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 502 },
-      );
+      return NextResponse.json({ error: "Failed to parse AI response" }, { status: 502 });
     }
 
     const rooms = parsed.rooms.map((room) => {
@@ -111,11 +98,7 @@ export async function POST(request: NextRequest) {
       const pixelW = xmax - xmin;
       const pixelH = ymax - ymin;
 
-      const { width, height } = calculateDimensions(
-        pixelW || 1,
-        pixelH || 1,
-        room.area,
-      );
+      const { width, height } = calculateDimensions(pixelW || 1, pixelH || 1, room.area);
 
       return {
         name: room.name,
@@ -128,10 +111,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ total_area: parsed.total_area, rooms });
   } catch (err) {
-    if (
-      err instanceof DOMException &&
-      (err.name === "TimeoutError" || err.name === "AbortError")
-    ) {
+    if (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) {
       return NextResponse.json(
         { error: "AI took too long to respond. Please try again." },
         { status: 504 },
@@ -140,8 +120,7 @@ export async function POST(request: NextRequest) {
     console.error("Extract error:", err);
     return NextResponse.json(
       {
-        error:
-          err instanceof Error ? err.message : "Failed to reach AI service",
+        error: err instanceof Error ? err.message : "Failed to reach AI service",
       },
       { status: 502 },
     );

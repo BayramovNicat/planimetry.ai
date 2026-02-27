@@ -1,4 +1,4 @@
-import type { Room, Bbox } from "./canvasTypes";
+import type { Bbox,Room } from "./canvasTypes";
 
 /**
  * Normalize room bboxes so they are sized by real-world dimensions (meters)
@@ -19,8 +19,7 @@ export function normalizeRooms(rooms: Room[]): Room[] {
     }
   }
   ratios.sort((a, b) => a - b);
-  const pxPerM =
-    ratios.length > 0 ? ratios[Math.floor(ratios.length / 2)] : 100;
+  const pxPerM = ratios.length > 0 ? ratios[Math.floor(ratios.length / 2)] : 100;
 
   return rooms.map((room) => {
     const [ymin, xmin, ymax, xmax] = room.bbox;
@@ -34,9 +33,7 @@ export function normalizeRooms(rooms: Room[]): Room[] {
     if (room.subRects) {
       const dy = newBbox[0] - ymin;
       const dx = newBbox[1] - xmin;
-      newSubRects = room.subRects.map(
-        (r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as Bbox,
-      );
+      newSubRects = room.subRects.map((r) => [r[0] + dy, r[1] + dx, r[2] + dy, r[3] + dx] as Bbox);
     }
 
     return {

@@ -1,12 +1,5 @@
-import type {
-  Room,
-  Bbox,
-  ScreenRect,
-  SnapLine,
-  SplitPreview,
-  OverrideBox,
-} from "./canvasTypes";
 import { ROOM_COLORS } from "../../constants";
+import type { Bbox, OverrideBox,Room, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
 
 interface DrawContext {
   ctx: CanvasRenderingContext2D;
@@ -220,11 +213,7 @@ export function drawRoomLabels(
 
     ctx.fillStyle = color.border;
     ctx.font = `${dimSize}px Arial, sans-serif`;
-    ctx.fillText(
-      `${rw.toFixed(1)} × ${rh.toFixed(1)}`,
-      cx,
-      cy + nameSize * 0.3 + areaSize * 0.9,
-    );
+    ctx.fillText(`${rw.toFixed(1)} × ${rh.toFixed(1)}`, cx, cy + nameSize * 0.3 + areaSize * 0.9);
 
     ctx.globalAlpha = 1;
   });
@@ -264,18 +253,13 @@ export function drawMeasurementLabels(
             const sy2 = offsetY + (overlapMax - minY) * scale;
             const labelY = (sy1 + sy2) / 2;
 
-            if (
-              drawnLabels.some(
-                (l) => Math.abs(l.x - sx) < 10 && Math.abs(l.y - labelY) < 10,
-              )
-            )
+            if (drawnLabels.some((l) => Math.abs(l.x - sx) < 10 && Math.abs(l.y - labelY) < 10))
               continue;
             drawnLabels.push({ x: sx, y: labelY });
 
             const wallLen = overlapMax - overlapMin;
             const bboxAH = aymax - aymin;
-            const realLen =
-              bboxAH > 0 ? (wallLen / bboxAH) * rooms[i].height : wallLen;
+            const realLen = bboxAH > 0 ? (wallLen / bboxAH) * rooms[i].height : wallLen;
 
             drawVerticalMeasurement(ctx, sx, sy1, sy2, labelY, realLen);
           }
@@ -295,18 +279,13 @@ export function drawMeasurementLabels(
             const sx2 = offsetX + (overlapMax - minX) * scale;
             const labelX = (sx1 + sx2) / 2;
 
-            if (
-              drawnLabels.some(
-                (l) => Math.abs(l.x - labelX) < 10 && Math.abs(l.y - sy) < 10,
-              )
-            )
+            if (drawnLabels.some((l) => Math.abs(l.x - labelX) < 10 && Math.abs(l.y - sy) < 10))
               continue;
             drawnLabels.push({ x: labelX, y: sy });
 
             const wallLen = overlapMax - overlapMin;
             const bboxAW = axmax - axmin;
-            const realLen =
-              bboxAW > 0 ? (wallLen / bboxAW) * rooms[i].width : wallLen;
+            const realLen = bboxAW > 0 ? (wallLen / bboxAW) * rooms[i].width : wallLen;
 
             drawHorizontalMeasurement(ctx, sx1, sx2, sy, labelX, realLen);
           }
@@ -388,22 +367,9 @@ function drawHorizontalMeasurement(
 
 // ─── Snap lines ──────────────────────────────────────────────────────
 
-export function drawSnapLines(
-  dc: DrawContext,
-  snapLines: SnapLine[],
-  isDragging: boolean,
-) {
+export function drawSnapLines(dc: DrawContext, snapLines: SnapLine[], isDragging: boolean) {
   if (snapLines.length === 0 || !isDragging) return;
-  const {
-    ctx,
-    containerWidth,
-    containerHeight,
-    scale,
-    offsetX,
-    offsetY,
-    minX,
-    minY,
-  } = dc;
+  const { ctx, containerWidth, containerHeight, scale, offsetX, offsetY, minX, minY } = dc;
 
   ctx.save();
   ctx.strokeStyle = "rgba(59,130,246,0.6)";
@@ -463,12 +429,7 @@ function drawSplitDimensionLabel(
   ctx.lineTo(pillX + pillW - r, pillY);
   ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
   ctx.lineTo(pillX + pillW, pillY + pillH - r);
-  ctx.quadraticCurveTo(
-    pillX + pillW,
-    pillY + pillH,
-    pillX + pillW - r,
-    pillY + pillH,
-  );
+  ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
   ctx.lineTo(pillX + r, pillY + pillH);
   ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
   ctx.lineTo(pillX, pillY + r);
@@ -596,10 +557,7 @@ export function drawSplitPreview(
 
 // ─── Resize handles ──────────────────────────────────────────────────
 
-export function drawResizeHandles(
-  ctx: CanvasRenderingContext2D,
-  activeRect: ScreenRect,
-) {
+export function drawResizeHandles(ctx: CanvasRenderingContext2D, activeRect: ScreenRect) {
   const H_SIZE = 10;
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "#3b82f6";

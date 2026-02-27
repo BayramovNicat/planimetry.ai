@@ -17,10 +17,10 @@ export function Tooltip({ label, children, side = "bottom" }: TooltipProps) {
   };
 
   return (
-    <div className="relative group/tip">
+    <div className="group/tip relative">
       {children}
       <div
-        className={`absolute ${positions[side]} pointer-events-none opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap px-2 py-1 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[11px] font-medium`}
+        className={`absolute ${positions[side]} pointer-events-none z-50 rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/tip:opacity-100 dark:bg-zinc-100 dark:text-zinc-900`}
       >
         {label}
       </div>

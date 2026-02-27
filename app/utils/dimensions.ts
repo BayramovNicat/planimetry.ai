@@ -1,8 +1,4 @@
-export function calculateDimensions(
-  pxWidth: number,
-  pxHeight: number,
-  totalArea: number,
-) {
+export function calculateDimensions(pxWidth: number, pxHeight: number, totalArea: number) {
   // 1. Determine the aspect ratio
   const aspectRatio = pxWidth / pxHeight;
 

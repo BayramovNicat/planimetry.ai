@@ -1,12 +1,7 @@
 import { useCallback } from "react";
+
 import type { Room } from "../../types";
-import type {
-  Bbox,
-  LayoutInfo,
-  OverrideBox,
-  SnapLine,
-  SplitPreview,
-} from "./canvasTypes";
+import type { Bbox, LayoutInfo, OverrideBox, SnapLine, SplitPreview } from "./canvasTypes";
 import { hitTest } from "./snapUtils";
 import { useCanvasDrag } from "./useCanvasDrag";
 import { useCanvasSplit } from "./useCanvasSplit";
@@ -19,12 +14,7 @@ interface HandleDef {
   y: number;
 }
 
-function getHandles(rect: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}): HandleDef[] {
+function getHandles(rect: { x: number; y: number; w: number; h: number }): HandleDef[] {
   return [
     { side: "top", x: rect.x + rect.w / 2, y: rect.y },
     { side: "right", x: rect.x + rect.w, y: rect.y + rect.h / 2 },
@@ -124,10 +114,7 @@ export function useCanvasInteraction({
         if (activeRect) {
           const handles = getHandles(activeRect);
           for (const h of handles) {
-            if (
-              Math.abs(mx - h.x) <= H_HIT_SIZE &&
-              Math.abs(my - h.y) <= H_HIT_SIZE
-            ) {
+            if (Math.abs(mx - h.x) <= H_HIT_SIZE && Math.abs(my - h.y) <= H_HIT_SIZE) {
               e.preventDefault();
               drag.startResizeDrag(activeRoom, h.side, mx, my);
               return;
@@ -143,16 +130,7 @@ export function useCanvasInteraction({
         drag.startMoveDrag(found, mx, my);
       }
     },
-    [
-      getMousePos,
-      normalizedRooms,
-      activeRoom,
-      splitMode,
-      onSplit,
-      layoutRef,
-      drag,
-      split,
-    ],
+    [getMousePos, normalizedRooms, activeRoom, splitMode, onSplit, layoutRef, drag, split],
   );
 
   const handleMouseMove = useCallback(
@@ -194,21 +172,14 @@ export function useCanvasInteraction({
       // Set cursor during drag
       if (currentDrag && currentDrag.type === "resize" && currentDrag.side) {
         canvas.style.cursor =
-          currentDrag.side === "left" || currentDrag.side === "right"
-            ? "ew-resize"
-            : "ns-resize";
+          currentDrag.side === "left" || currentDrag.side === "right" ? "ew-resize" : "ns-resize";
       } else if (currentDrag && currentDrag.type === "move") {
         canvas.style.cursor = "grabbing";
       }
 
       // Process active drag
       if (currentDrag) {
-        const result = drag.updateDrag(
-          mx,
-          my,
-          layoutRef.current.scale,
-          activeRoom,
-        );
+        const result = drag.updateDrag(mx, my, layoutRef.current.scale, activeRoom);
         if (result) {
           drawRooms(result.highlight, result.activeRoom, result.overrideBox, {
             dragIndex: currentDrag.index,
@@ -230,15 +201,10 @@ export function useCanvasInteraction({
         const activeRect = rects[activeRoom];
         const handles = getHandles(activeRect);
         for (const h of handles) {
-          if (
-            Math.abs(mx - h.x) <= H_HIT_SIZE &&
-            Math.abs(my - h.y) <= H_HIT_SIZE
-          ) {
+          if (Math.abs(mx - h.x) <= H_HIT_SIZE && Math.abs(my - h.y) <= H_HIT_SIZE) {
             overHandle = true;
             canvas.style.cursor =
-              h.side === "left" || h.side === "right"
-                ? "ew-resize"
-                : "ns-resize";
+              h.side === "left" || h.side === "right" ? "ew-resize" : "ns-resize";
             break;
           }
         }

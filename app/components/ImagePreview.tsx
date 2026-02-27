@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useRef, useState, useCallback, useEffect } from "react";
+import { type ReactNode, useCallback, useEffect,useRef, useState } from "react";
 
 interface ImagePreviewProps {
   src: string;
@@ -72,17 +72,17 @@ export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePrev
   return (
     <div
       ref={containerRef}
-      className="relative rounded-xl overflow-hidden border border-zinc-200/60 dark:border-zinc-800/60"
+      className="relative overflow-hidden rounded-xl border border-zinc-200/60 dark:border-zinc-800/60"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt="Floor plan"
-        className="w-full max-h-125 object-contain"
+        className="max-h-125 w-full object-contain"
         draggable={false}
       />
       {overlay && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           {overlay}
         </div>
       )}
@@ -94,14 +94,11 @@ export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePrev
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <div className="absolute top-3 left-3 bg-zinc-900/80 text-white text-[11px] px-2.5 py-1 rounded-full pointer-events-none">
+          <div className="pointer-events-none absolute top-3 left-3 rounded-full bg-zinc-900/80 px-2.5 py-1 text-[11px] text-white">
             Draw a rectangle over this room
           </div>
           {rectStyle && (
-            <div
-              className="absolute border-2 border-blue-500/70 bg-blue-500/5"
-              style={rectStyle}
-            />
+            <div className="absolute border-2 border-blue-500/70 bg-blue-500/5" style={rectStyle} />
           )}
         </div>
       )}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import type { Room } from "../types";
+import { useCallback,useEffect, useRef, useState } from "react";
+
 import { ROOM_COLORS } from "../constants";
+import type { Room } from "../types";
 
 interface RoomCardProps {
   room: Room;
@@ -75,26 +76,13 @@ export function RoomCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onSelect}
-      className={`rounded-lg p-3 border border-zinc-200/60 dark:border-zinc-800/60 transition-all cursor-pointer ${
-        isActive
-          ? "ring-1 ring-blue-500"
-          : isHighlighted
-            ? "ring-1"
-            : isDimmed
-              ? "opacity-50"
-              : ""
+      className={`cursor-pointer rounded-lg border border-zinc-200/60 p-3 transition-all dark:border-zinc-800/60 ${
+        isActive ? "ring-1 ring-blue-500" : isHighlighted ? "ring-1" : isDimmed ? "opacity-50" : ""
       }`}
-      style={
-        isHighlighted && !isActive
-          ? { outlineColor: color.border }
-          : undefined
-      }
+      style={isHighlighted && !isActive ? { outlineColor: color.border } : undefined}
     >
-      <div className="flex items-center gap-2 mb-1">
-        <div
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: color.text }}
-        />
+      <div className="mb-1 flex items-center gap-2">
+        <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.text }} />
         {editingField === "name" ? (
           <input
             ref={inputRef}
@@ -103,11 +91,11 @@ export function RoomCard({
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-zinc-900 dark:text-zinc-100 bg-transparent border-b border-blue-500 outline-none w-full"
+            className="w-full border-b border-blue-500 bg-transparent text-sm font-medium text-zinc-900 outline-none dark:text-zinc-100"
           />
         ) : (
           <p
-            className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="text-sm font-medium text-zinc-900 transition-colors hover:text-blue-600 dark:text-zinc-100 dark:hover:text-blue-400"
             onDoubleClick={(e) => startEdit("name", e)}
           >
             {room.name}
@@ -127,20 +115,20 @@ export function RoomCard({
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 bg-transparent border-b border-blue-500 outline-none w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-20 [appearance:textfield] border-b border-blue-500 bg-transparent text-lg font-semibold text-zinc-800 outline-none dark:text-zinc-200 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">m²</span>
         </div>
       ) : (
         <p
-          className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          className="text-lg font-semibold text-zinc-800 transition-colors hover:text-blue-600 dark:text-zinc-200 dark:hover:text-blue-400"
           onDoubleClick={(e) => startEdit("area", e)}
         >
           {room.area} m²
         </p>
       )}
 
-      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
         {room.width}m × {room.height}m
       </p>
     </div>

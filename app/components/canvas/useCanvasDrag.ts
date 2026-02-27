@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+
 import type { Room } from "../../types";
 import type { Bbox, DragState, SnapLine } from "./canvasTypes";
 import { getRoomEdges, SNAP_PX, snapBbox } from "./snapUtils";
@@ -36,12 +37,7 @@ export function useCanvasDrag(normalizedRooms: Room[]) {
 
   /** Begin a resize drag on a room edge */
   const startResizeDrag = useCallback(
-    (
-      index: number,
-      side: "top" | "bottom" | "left" | "right",
-      mx: number,
-      my: number,
-    ) => {
+    (index: number, side: "top" | "bottom" | "left" | "right", mx: number, my: number) => {
       const room = normalizedRooms[index];
       dragRef.current = {
         index,
@@ -94,19 +90,9 @@ export function useCanvasDrag(normalizedRooms: Room[]) {
     const dxBbox = dxPx / scale;
     const dyBbox = dyPx / scale;
     const [ymin, xmin, ymax, xmax] = drag.origBbox;
-    const rawBbox: Bbox = [
-      ymin + dyBbox,
-      xmin + dxBbox,
-      ymax + dyBbox,
-      xmax + dxBbox,
-    ];
+    const rawBbox: Bbox = [ymin + dyBbox, xmin + dxBbox, ymax + dyBbox, xmax + dxBbox];
 
-    const { bbox: snapped, lines } = snapBbox(
-      drag.index,
-      rawBbox,
-      normalizedRooms,
-      scale,
-    );
+    const { bbox: snapped, lines } = snapBbox(drag.index, rawBbox, normalizedRooms, scale);
     dragBboxRef.current = snapped;
     snapLinesRef.current = lines;
 
@@ -213,12 +199,7 @@ export function useCanvasDrag(normalizedRooms: Room[]) {
       new_xmin = orig_xmin + (origBboxW - newW * pxPerM) / 2;
     }
 
-    const newBbox: Bbox = [
-      new_ymin,
-      new_xmin,
-      new_ymin + newH * pxPerM,
-      new_xmin + newW * pxPerM,
-    ];
+    const newBbox: Bbox = [new_ymin, new_xmin, new_ymin + newH * pxPerM, new_xmin + newW * pxPerM];
 
     dragBboxRef.current = newBbox;
     dragSizeRef.current = { w: newW, h: newH };

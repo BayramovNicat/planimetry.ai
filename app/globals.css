@@ -27,8 +27,13 @@ body {
 
 /* Skeleton pulse animation */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .animate-pulse {
@@ -37,10 +42,20 @@ body {
 
 /* Dots animation for loading text */
 @keyframes dots {
-  0%, 20% { content: ""; }
-  40% { content: "."; }
-  60% { content: ".."; }
-  80%, 100% { content: "..."; }
+  0%,
+  20% {
+    content: "";
+  }
+  40% {
+    content: ".";
+  }
+  60% {
+    content: "..";
+  }
+  80%,
+  100% {
+    content: "...";
+  }
 }
 
 .loading-dots::after {
@@ -50,21 +65,46 @@ body {
 
 /* Loading room borders pulsing in */
 @keyframes room-pulse {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.03); }
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
 }
 
-.loading-room { animation: room-pulse 2s ease-in-out infinite; }
-.loading-room-delay-1 { animation: room-pulse 2s ease-in-out 0.3s infinite; }
-.loading-room-delay-2 { animation: room-pulse 2s ease-in-out 0.6s infinite; }
-.loading-room-delay-3 { animation: room-pulse 2s ease-in-out 0.9s infinite; }
+.loading-room {
+  animation: room-pulse 2s ease-in-out infinite;
+}
+.loading-room-delay-1 {
+  animation: room-pulse 2s ease-in-out 0.3s infinite;
+}
+.loading-room-delay-2 {
+  animation: room-pulse 2s ease-in-out 0.6s infinite;
+}
+.loading-room-delay-3 {
+  animation: room-pulse 2s ease-in-out 0.9s infinite;
+}
 
 /* Scanning line sweeping top to bottom */
 @keyframes scan {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 .loading-scan {
@@ -73,8 +113,12 @@ body {
 
 /* Shimmer across skeleton cards */
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .loading-shimmer {
@@ -91,10 +135,22 @@ body {
 
 /* Tip text fade in */
 @keyframes tip-fade {
-  0% { opacity: 0; transform: translateY(4px); }
-  15% { opacity: 1; transform: translateY(0); }
-  85% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-4px); }
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .loading-tip-fade {

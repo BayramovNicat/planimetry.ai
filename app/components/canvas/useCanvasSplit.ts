@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+
 import type { Room } from "../../types";
 import type { LayoutInfo, ScreenRect, SplitPreview } from "./canvasTypes";
 import { snapSplitPosition } from "./snapUtils";
@@ -33,8 +34,7 @@ export function useCanvasSplit(normalizedRooms: Room[]) {
       // Determine orientation: horizontal if cursor is closer to horizontal edge
       const relX = (mx - activeRect.x) / activeRect.w - 0.5;
       const relY = (my - activeRect.y) / activeRect.h - 0.5;
-      const orientation: "h" | "v" =
-        Math.abs(relY) > Math.abs(relX) ? "h" : "v";
+      const orientation: "h" | "v" = Math.abs(relY) > Math.abs(relX) ? "h" : "v";
 
       const { snappedMx, snappedMy, snapped } = snapSplitPosition(
         mx,
@@ -48,16 +48,10 @@ export function useCanvasSplit(normalizedRooms: Room[]) {
       // Compute split ratio and predicted dimensions
       let ratio: number;
       if (orientation === "h") {
-        const clampedY = Math.max(
-          activeRect.y,
-          Math.min(activeRect.y + activeRect.h, snappedMy),
-        );
+        const clampedY = Math.max(activeRect.y, Math.min(activeRect.y + activeRect.h, snappedMy));
         ratio = (clampedY - activeRect.y) / activeRect.h;
       } else {
-        const clampedX = Math.max(
-          activeRect.x,
-          Math.min(activeRect.x + activeRect.w, snappedMx),
-        );
+        const clampedX = Math.max(activeRect.x, Math.min(activeRect.x + activeRect.w, snappedMx));
         ratio = (clampedX - activeRect.x) / activeRect.w;
       }
 

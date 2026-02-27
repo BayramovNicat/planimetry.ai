@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect,useRef } from "react";
+
 import { useProjectsContext } from "./components/ClientLayout";
 import { ImageDropZone } from "./components/ImageDropZone";
 
@@ -55,20 +56,14 @@ export default function Home() {
   }, [handleFile]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 md:p-12">
-      <div className="max-w-3xl mx-auto pt-12">
-        <h1 className="text-3xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">
+    <div className="min-h-screen bg-zinc-50 p-6 md:p-12 dark:bg-zinc-950">
+      <div className="mx-auto max-w-3xl pt-12">
+        <h1 className="mb-2 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
           Analyze Floor Plan
         </h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-8">
-          Upload an image to get started
-        </p>
+        <p className="mb-8 text-zinc-500 dark:text-zinc-400">Upload an image to get started</p>
 
-        <ImageDropZone
-          onFile={handleFile}
-          onDrop={handleDrop}
-          fileInputRef={fileInputRef}
-        />
+        <ImageDropZone onFile={handleFile} onDrop={handleDrop} fileInputRef={fileInputRef} />
       </div>
     </div>
   );
