@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useProjectsContext } from "../../components/ClientLayout";
 import { useFloorPlanAnalyzer } from "../../hooks/useFloorPlanAnalyzer";
 import { Undo2, Redo2 } from "lucide-react";
+import { Tooltip } from "../../components/Tooltip";
 import { ImageDropZone } from "../../components/ImageDropZone";
 import { ImagePreview } from "../../components/ImagePreview";
 import { FloorPlanCanvas } from "../../components/FloorPlanCanvas";
@@ -129,22 +130,24 @@ export default function ProjectPage() {
                     </div>
                   )}
                   <div className="flex gap-1">
-                    <button
-                      onClick={undo}
-                      disabled={!canUndo}
-                      title="Undo (Ctrl+Z)"
-                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      <Undo2 size={15} />
-                    </button>
-                    <button
-                      onClick={redo}
-                      disabled={!canRedo}
-                      title="Redo (Ctrl+Shift+Z)"
-                      className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                    >
-                      <Redo2 size={15} />
-                    </button>
+                    <Tooltip label="Undo" side="bottom">
+                      <button
+                        onClick={undo}
+                        disabled={!canUndo}
+                        className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      >
+                        <Undo2 size={15} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Redo" side="bottom">
+                      <button
+                        onClick={redo}
+                        disabled={!canRedo}
+                        className="px-2.5 py-1.5 rounded-lg text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                      >
+                        <Redo2 size={15} />
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
 

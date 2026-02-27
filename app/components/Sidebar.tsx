@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Pencil, Trash2, Plus, Menu, Search, X } from "lucide-react";
+import { Tooltip } from "./Tooltip";
 import type { Project } from "../types";
 
 interface SidebarProps {
@@ -82,21 +83,23 @@ export function Sidebar({
     <>
       {/* Toggle button + new plan shortcut — always visible */}
       <div className="fixed top-3 left-3 z-50 flex flex-col items-center gap-1">
-        <button
-          onClick={onToggle}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
-          title={collapsed ? "Open sidebar" : "Close sidebar"}
-        >
-          <Menu size={20} className="text-zinc-600 dark:text-zinc-400" />
-        </button>
-        {collapsed && (
-          <Link
-            href="/"
+        <Tooltip label={collapsed ? "Open sidebar" : "Close sidebar"} side="right">
+          <button
+            onClick={onToggle}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
-            title="New plan"
           >
-            <Plus size={20} className="text-zinc-600 dark:text-zinc-400" />
-          </Link>
+            <Menu size={20} className="text-zinc-600 dark:text-zinc-400" />
+          </button>
+        </Tooltip>
+        {collapsed && (
+          <Tooltip label="New plan" side="right">
+            <Link
+              href="/"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all duration-300 cursor-pointer"
+            >
+              <Plus size={20} className="text-zinc-600 dark:text-zinc-400" />
+            </Link>
+          </Tooltip>
         )}
       </div>
 
@@ -119,20 +122,21 @@ export function Sidebar({
           {/* Toggle spacer + search button row */}
           <div className="flex items-center justify-between">
             <div className="w-10 h-10" />
-            <button
-              onClick={() => {
-                setSearching(!searching);
-                setSearchQuery("");
-              }}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Search projects"
-            >
-              {searching ? (
-                <X size={16} className="text-zinc-600 dark:text-zinc-400" />
-              ) : (
-                <Search size={16} className="text-zinc-600 dark:text-zinc-400" />
-              )}
-            </button>
+            <Tooltip label={searching ? "Close search" : "Search"} side="bottom">
+              <button
+                onClick={() => {
+                  setSearching(!searching);
+                  setSearchQuery("");
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                {searching ? (
+                  <X size={16} className="text-zinc-600 dark:text-zinc-400" />
+                ) : (
+                  <Search size={16} className="text-zinc-600 dark:text-zinc-400" />
+                )}
+              </button>
+            </Tooltip>
           </div>
 
           {/* Search input */}
