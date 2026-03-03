@@ -67,8 +67,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   };
 
   // Extract active project ID from URL
-  const match = pathname.match(/^\/project\/([^/]+)/);
-  const activeId = match?.[1] ?? null;
+  const projectMatch = pathname.match(/^\/project\/([^/]+)/);
+  const compareMatch = pathname.match(/^\/compare\/([^/]+)\/([^/]+)/);
+  const activeId = projectMatch?.[1] ?? compareMatch?.[1] ?? null;
 
   return (
     <ProjectsContext.Provider value={{ projects, activeId, addProject, updateProject }}>

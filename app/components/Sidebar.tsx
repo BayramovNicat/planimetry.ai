@@ -1,6 +1,6 @@
 "use client";
 
-import { Ellipsis, Menu, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Columns2, Ellipsis, Menu, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,6 +29,7 @@ export function Sidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [comparingId, setComparingId] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -111,7 +112,7 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed top-0 left-0 z-40 flex h-full w-[260px] flex-col bg-zinc-50 transition-transform duration-300 ease-in-out dark:bg-zinc-950 ${
+        className={`fixed top-0 left-0 z-40 flex h-full w-65 flex-col bg-zinc-50 transition-transform duration-300 ease-in-out dark:bg-zinc-950 ${
           collapsed ? "-translate-x-full" : "translate-x-0"
         }`}
       >
@@ -165,6 +166,19 @@ export function Sidebar({
           </Link>
         </div>
 
+        {/* Compare selection banner */}
+        {comparingId && (
+          <div className="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+            <span className="flex-1">Select second plan to compare</span>
+            <button
+              onClick={() => setComparingId(null)}
+              className="cursor-pointer rounded p-0.5 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Project list */}
         <nav className="flex-1 overflow-y-auto px-2 py-1">
           {projects.length === 0 && (
@@ -177,6 +191,7 @@ export function Sidebar({
             .filter((p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
             .map((project) => {
               const isActive = project.id === activeId;
+              const isComparing = comparingId === project.id;
               const isEditing = editingId === project.id;
               const isMenuOpen = menuOpenId === project.id;
 
@@ -184,9 +199,11 @@ export function Sidebar({
                 <div
                   key={project.id}
                   className={`group relative flex items-center rounded-lg text-[13px] transition-colors ${
-                    isActive
-                      ? "bg-zinc-200/80 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-100"
-                      : "text-zinc-600 hover:bg-zinc-200/50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
+                    isComparing
+                      ? "bg-blue-100/80 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-700"
+                      : isActive
+                        ? "bg-zinc-200/80 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-100"
+                        : "text-zinc-600 hover:bg-zinc-200/50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
                   }`}
                 >
                   {isEditing ? (
@@ -203,7 +220,19 @@ export function Sidebar({
                     />
                   ) : (
                     <>
-                      <Link href={`/project/${project.id}`} className="flex-1 truncate px-3 py-2">
+                      <Link
+                        href={
+                          comparingId && comparingId !== project.id
+                            ? `/compare/${comparingId}/${project.id}`
+                            : `/project/${project.id}`
+                        }
+                        onClick={() => {
+                          if (comparingId && comparingId !== project.id) {
+                            setComparingId(null);
+                          }
+                        }}
+                        className="flex-1 truncate px-3 py-2"
+                      >
                         {project.name}
                       </Link>
 
@@ -230,6 +259,16 @@ export function Sidebar({
                             >
                               <Pencil size={14} />
                               Rename
+                            </button>
+                            <button
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                setComparingId(project.id);
+                              }}
+                              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                            >
+                              <Columns2 size={14} />
+                              Compare
                             </button>
                             <button
                               onClick={() => handleDelete(project.id)}

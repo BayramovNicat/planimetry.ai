@@ -133,11 +133,13 @@ export default function ProjectPage() {
             {result && (
               <div ref={canvasRef} className="space-y-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  {result.total_area && (
-                    <div className="inline-block rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
-                      Total area: {result.total_area} m²
-                    </div>
-                  )}
+                  <div className="inline-block rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                    Total area:{" "}
+                    {result.total_area ??
+                      Math.round(result.rooms.reduce((sum, r) => sum + r.area, 0) * 100) /
+                        100}{" "}
+                    m²
+                  </div>
                   <div className="flex gap-1">
                     <Tooltip label="Undo" side="bottom">
                       <button
