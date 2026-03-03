@@ -15,6 +15,12 @@ export interface AnalysisResult {
   rooms: Room[];
 }
 
+export interface GalleryImage {
+  id: string;
+  base64: string;
+  createdAt: number;
+}
+
 export interface Project {
   id: string;
   name: string;

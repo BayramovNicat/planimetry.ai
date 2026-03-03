@@ -1,11 +1,15 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useProjectsContext } from "../../components/ClientLayout";
 import { FloorPlanEditor, useFloorPlanEditor } from "../../components/FloorPlanEditor";
+import { Gallery, handleGalleryPaste } from "../../components/Gallery";
 import { ImageDropZone } from "../../components/ImageDropZone";
+import { useGallery } from "../../hooks/useGallery";
+
+type PasteTarget = "floorplan" | "gallery";
 
 export default function ProjectPage() {
   const params = useParams<{ id: string }>();
@@ -21,7 +25,34 @@ export default function ProjectPage() {
     [params.id, updateProject],
   );
 
-  const editor = useFloorPlanEditor(project, onUpdate);
+  const editor = useFloorPlanEditor(project, onUpdate, { disablePaste: true });
+  const { addImage } = useGallery(params.id);
+
+  const [pasteTarget, setPasteTarget] = useState<PasteTarget>("floorplan");
+  const pasteTargetRef = useRef<PasteTarget>("floorplan");
+  pasteTargetRef.current = pasteTarget;
+
+  // Paste routing: floor plan or gallery based on focus
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (pasteTargetRef.current === "gallery") {
+        handleGalleryPaste(e, addImage);
+      } else {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (file) editor.handleFile(file);
+            break;
+          }
+        }
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [addImage, editor]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,14 +95,24 @@ export default function ProjectPage() {
         </h1>
 
         {!editor.image && (
-          <ImageDropZone
-            onFile={editor.handleFile}
-            onDrop={editor.handleDrop}
-            fileInputRef={editor.fileInputRef}
-          />
+          <div tabIndex={0} onFocus={() => setPasteTarget("floorplan")} className="outline-none">
+            <ImageDropZone
+              onFile={editor.handleFile}
+              onDrop={editor.handleDrop}
+              fileInputRef={editor.fileInputRef}
+            />
+          </div>
         )}
 
-        {editor.image && <FloorPlanEditor state={editor} />}
+        {editor.image && (
+          <div tabIndex={0} onFocus={() => setPasteTarget("floorplan")} className="outline-none">
+            <FloorPlanEditor state={editor} />
+          </div>
+        )}
+
+        <div className="mt-6">
+          <Gallery projectId={params.id} onFocus={() => setPasteTarget("gallery")} />
+        </div>
       </div>
     </div>
   );

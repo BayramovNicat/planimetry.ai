@@ -12,9 +12,15 @@ const MAX_HISTORY = 50;
 interface UseFloorPlanAnalyzerOptions {
   project: Project | null;
   onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void;
+  /** When true, skip the global paste listener (caller manages paste routing) */
+  disablePaste?: boolean;
 }
 
-export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzerOptions) {
+export function useFloorPlanAnalyzer({
+  project,
+  onUpdate,
+  disablePaste,
+}: UseFloorPlanAnalyzerOptions) {
   const [image, setImage] = useState<string | null>(project?.image ?? null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(project?.result ?? null);
@@ -152,6 +158,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
   );
 
   useEffect(() => {
+    if (disablePaste) return;
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -166,7 +173,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
 
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
-  }, [handleFile]);
+  }, [handleFile, disablePaste]);
 
   const updateRoom = useCallback(
     (

@@ -20,8 +20,13 @@ function computeTotalArea(result: AnalysisResult): number {
 export function useFloorPlanEditor(
   project: Project | null,
   onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void,
+  options?: { disablePaste?: boolean },
 ) {
-  const { activeRoom, remeasureRoom, ...rest } = useFloorPlanAnalyzer({ project, onUpdate });
+  const { activeRoom, remeasureRoom, ...rest } = useFloorPlanAnalyzer({
+    project,
+    onUpdate,
+    disablePaste: options?.disablePaste,
+  });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [splitMode, setSplitMode] = useState(false);
