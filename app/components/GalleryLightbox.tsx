@@ -13,7 +13,12 @@ interface GalleryLightboxProps {
   onNavigate: (index: number) => void;
 }
 
-export function GalleryLightbox({ images, currentIndex, onClose, onNavigate }: GalleryLightboxProps) {
+export function GalleryLightbox({
+  images,
+  currentIndex,
+  onClose,
+  onNavigate,
+}: GalleryLightboxProps) {
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < images.length - 1;
 

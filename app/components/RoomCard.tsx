@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import type { Room } from "../types";
+import { wallArea } from "../utils/dimensions";
 
 interface RoomCardProps {
   room: Room;
@@ -119,6 +120,9 @@ export const RoomCard = memo(function RoomCard({
 
       <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
         {room.width}m × {room.height}m
+      </p>
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">
+        Walls: {wallArea(room.width, room.height)} m²
       </p>
     </div>
   );

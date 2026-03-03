@@ -14,3 +14,9 @@ export function calculateDimensions(pxWidth: number, pxHeight: number, totalArea
     height: Number(height.toFixed(2)),
   };
 }
+
+const WALL_HEIGHT = 3;
+
+export function wallArea(width: number, height: number): number {
+  return Math.round((width + height) * 2 * WALL_HEIGHT * 100) / 100;
+}

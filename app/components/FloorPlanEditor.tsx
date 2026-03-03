@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { useFloorPlanAnalyzer } from "../hooks/useFloorPlanAnalyzer";
 import type { AnalysisResult, Project } from "../types";
+import { wallArea } from "../utils/dimensions";
 import { FloorPlanCanvas } from "./FloorPlanCanvas";
 import { ImagePreview } from "./ImagePreview";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -107,7 +108,14 @@ export function FloorPlanEditor({
         <div ref={canvasRef} className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-block rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
-              {computeTotalArea(result)} m²
+              Area: {computeTotalArea(result)} m²
+            </div>
+            <div className="inline-block rounded-full bg-zinc-700 px-2.5 py-1 text-xs font-semibold text-white dark:bg-zinc-300 dark:text-zinc-900">
+              Walls:{" "}
+              {Math.round(
+                result.rooms.reduce((sum, r) => sum + wallArea(r.width, r.height), 0) * 100,
+              ) / 100}{" "}
+              m²
             </div>
             <div className="flex gap-1">
               <Tooltip label="Undo" side="bottom">
