@@ -28,7 +28,7 @@ export function drawRoomFillsAndBorders(
   const { ctx, scale, offsetX, offsetY, minX, minY } = dc;
 
   rooms.forEach((room, i) => {
-    const color = ROOM_COLORS[i % ROOM_COLORS.length];
+    const color = ROOM_COLORS[(room.colorIndex ?? i) % ROOM_COLORS.length];
     const rect = rects[i];
 
     const isDragging = isDraggingFn(i);
@@ -196,7 +196,7 @@ export function drawRoomLabels(
   overrideBox?: OverrideBox,
 ) {
   rooms.forEach((room, i) => {
-    const color = ROOM_COLORS[i % ROOM_COLORS.length];
+    const color = ROOM_COLORS[(room.colorIndex ?? i) % ROOM_COLORS.length];
     const { x, y, w, h } = rects[i];
     const isHighlighted = highlight === i;
     const isActive = active === i;

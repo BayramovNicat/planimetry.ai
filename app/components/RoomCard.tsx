@@ -31,7 +31,7 @@ export function RoomCard({
   const [editingField, setEditingField] = useState<"name" | "area" | null>(null);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const color = ROOM_COLORS[colorIndex % ROOM_COLORS.length];
+  const color = ROOM_COLORS[(room.colorIndex ?? colorIndex) % ROOM_COLORS.length];
 
   useEffect(() => {
     if (editingField && inputRef.current) {

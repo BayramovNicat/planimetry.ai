@@ -114,6 +114,8 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
       }
 
       const data: AnalysisResult = await res.json();
+      // Assign stable colorIndex to each room
+      data.rooms = data.rooms.map((r, i) => ({ ...r, colorIndex: r.colorIndex ?? i }));
       setResult(data);
       onUpdateRef.current({ result: data });
     } catch (err) {
@@ -288,6 +290,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
       const bboxH = newBbox[2] - newBbox[0];
       const { width, height } = calculateDimensions(bboxW, bboxH, newArea);
 
+      const maxColor = Math.max(0, ...result.rooms.map((r) => r.colorIndex ?? 0));
       const merged = {
         name: `${roomA.name} + ${roomB.name}`,
         area: newArea,
@@ -295,6 +298,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
         height,
         bbox: newBbox,
         subRects: allRects,
+        colorIndex: maxColor + 1,
       };
 
       // Also normalize remaining rooms so everything is in the same coordinate space
@@ -346,12 +350,14 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
       const bboxH2 = bbox2[2] - bbox2[0];
       const dim2 = calculateDimensions(bboxW2, bboxH2, area2);
 
+      const maxColor = Math.max(0, ...result.rooms.map((r) => r.colorIndex ?? 0));
       const room1 = {
         name: `${room.name} (1)`,
         area: Number(area1.toFixed(2)),
         width: dim1.width,
         height: dim1.height,
         bbox: bbox1,
+        colorIndex: maxColor + 1,
       };
       const room2 = {
         name: `${room.name} (2)`,
@@ -359,11 +365,25 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
         width: dim2.width,
         height: dim2.height,
         bbox: bbox2,
+        colorIndex: maxColor + 2,
       };
 
       const rooms = [...result.rooms];
       rooms.splice(index, 1, room1, room2);
 
+      commitResult({ ...result, rooms });
+      setActiveRoom(null);
+    },
+    [result, commitResult],
+  );
+
+  const reorderRooms = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!result) return;
+      if (fromIndex === toIndex) return;
+      const rooms = [...result.rooms];
+      const [moved] = rooms.splice(fromIndex, 1);
+      rooms.splice(toIndex, 0, moved);
       commitResult({ ...result, rooms });
       setActiveRoom(null);
     },
@@ -384,6 +404,7 @@ export function useFloorPlanAnalyzer({ project, onUpdate }: UseFloorPlanAnalyzer
     moveRoom,
     mergeRooms,
     splitRoom,
+    reorderRooms,
     undo,
     redo,
     canUndo,

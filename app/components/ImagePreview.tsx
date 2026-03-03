@@ -7,9 +7,17 @@ interface ImagePreviewProps {
   overlay?: ReactNode;
   activeRoom: number | null;
   onDrawRect: (pxW: number, pxH: number) => void;
+  /** Extra class for the <img>, e.g. "max-h-64" to constrain in compare view */
+  imgClassName?: string;
 }
 
-export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePreviewProps) {
+export function ImagePreview({
+  src,
+  overlay,
+  activeRoom,
+  onDrawRect,
+  imgClassName,
+}: ImagePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -80,7 +88,7 @@ export function ImagePreview({ src, overlay, activeRoom, onDrawRect }: ImagePrev
       <img
         src={src}
         alt="Floor plan"
-        className="max-h-125 w-full object-contain"
+        className={`w-full object-contain ${imgClassName ?? "max-h-125"}`}
         draggable={false}
       />
       {overlay && (

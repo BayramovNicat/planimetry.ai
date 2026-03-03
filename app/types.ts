@@ -6,6 +6,8 @@ export interface Room {
   bbox: [number, number, number, number];
   /** For merged/composite rooms: individual sub-rectangles preserving original shapes */
   subRects?: [number, number, number, number][];
+  /** Stable color index assigned at creation, survives reordering */
+  colorIndex?: number;
 }
 
 export interface AnalysisResult {
