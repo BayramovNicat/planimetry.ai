@@ -13,8 +13,7 @@ import { Tooltip } from "./Tooltip";
 
 function computeTotalArea(result: AnalysisResult): number {
   return (
-    result.total_area ??
-    Math.round(result.rooms.reduce((sum, r) => sum + r.area, 0) * 100) / 100
+    result.total_area ?? Math.round(result.rooms.reduce((sum, r) => sum + r.area, 0) * 100) / 100
   );
 }
 
@@ -22,11 +21,7 @@ export function useFloorPlanEditor(
   project: Project | null,
   onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void,
 ) {
-  const {
-    activeRoom,
-    remeasureRoom,
-    ...rest
-  } = useFloorPlanAnalyzer({ project, onUpdate });
+  const { activeRoom, remeasureRoom, ...rest } = useFloorPlanAnalyzer({ project, onUpdate });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [splitMode, setSplitMode] = useState(false);

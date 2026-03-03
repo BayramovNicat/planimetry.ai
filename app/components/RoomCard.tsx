@@ -1,37 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-import { ROOM_COLORS } from "../constants";
 import type { Room } from "../types";
 
 interface RoomCardProps {
   room: Room;
-  colorIndex: number;
+  color: { bg: string; border: string; text: string };
   isHighlighted: boolean;
   isDimmed: boolean;
   isActive: boolean;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  onSelect: () => void;
   onUpdate: (fields: { name?: string; area?: number }) => void;
 }
 
-export function RoomCard({
+export const RoomCard = memo(function RoomCard({
   room,
-  colorIndex,
+  color,
   isHighlighted,
   isDimmed,
   isActive,
-  onMouseEnter,
-  onMouseLeave,
-  onSelect,
   onUpdate,
 }: RoomCardProps) {
   const [editingField, setEditingField] = useState<"name" | "area" | null>(null);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const color = ROOM_COLORS[(room.colorIndex ?? colorIndex) % ROOM_COLORS.length];
 
   useEffect(() => {
     if (editingField && inputRef.current) {
@@ -73,9 +65,6 @@ export function RoomCard({
 
   return (
     <div
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      onClick={onSelect}
       className={`cursor-pointer rounded-lg border border-zinc-200/60 p-3 transition-all dark:border-zinc-800/60 ${
         isActive ? "ring-1 ring-blue-500" : isHighlighted ? "ring-1" : isDimmed ? "opacity-50" : ""
       }`}
@@ -133,4 +122,4 @@ export function RoomCard({
       </p>
     </div>
   );
-}
+});

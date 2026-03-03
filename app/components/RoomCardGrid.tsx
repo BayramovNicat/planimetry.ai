@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 
+import { ROOM_COLORS } from "../constants";
 import type { Room } from "../types";
 import { RoomCard } from "./RoomCard";
 
@@ -15,6 +16,60 @@ interface RoomCardGridProps {
   onReorderRooms?: (fromIndex: number, toIndex: number) => void;
 }
 
+const DATA_ATTR = "data-room-index";
+
+function getIndex(e: React.MouseEvent | React.DragEvent): number | null {
+  const el = (e.target as HTMLElement).closest(`[${DATA_ATTR}]`);
+  if (!el) return null;
+  return Number(el.getAttribute(DATA_ATTR));
+}
+
+const DraggableCard = memo(function DraggableCard({
+  room,
+  index,
+  isHighlighted,
+  isDimmed,
+  isActive,
+  isDragging,
+  isDropTarget,
+  draggable,
+  onUpdate,
+}: {
+  room: Room;
+  index: number;
+  isHighlighted: boolean;
+  isDimmed: boolean;
+  isActive: boolean;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  draggable: boolean;
+  onUpdate: (index: number, fields: { name?: string; area?: number }) => void;
+}) {
+  const handleUpdate = useCallback(
+    (fields: { name?: string; area?: number }) => onUpdate(index, fields),
+    [index, onUpdate],
+  );
+
+  return (
+    <div
+      {...{ [DATA_ATTR]: index }}
+      draggable={draggable}
+      className={`rounded-lg border-2 transition-all ${
+        isDropTarget ? "border-blue-400 dark:border-blue-500" : "border-transparent"
+      } ${isDragging ? "opacity-40" : ""}`}
+    >
+      <RoomCard
+        room={room}
+        color={ROOM_COLORS[(room.colorIndex ?? index) % ROOM_COLORS.length]}
+        isHighlighted={isHighlighted}
+        isDimmed={isDimmed}
+        isActive={isActive}
+        onUpdate={handleUpdate}
+      />
+    </div>
+  );
+});
+
 export function RoomCardGrid({
   rooms,
   hoveredRoom,
@@ -26,44 +81,79 @@ export function RoomCardGrid({
 }: RoomCardGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const dragNodeRef = useRef<HTMLDivElement | null>(null);
+  const ghostRef = useRef<HTMLDivElement | null>(null);
+  const draggable = !!onReorderRooms;
 
-  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, index: number) => {
-    setDragIndex(index);
-    dragNodeRef.current = e.currentTarget;
+  // --- Delegated mouse handlers on grid ---
+  const handleMouseOver = useCallback(
+    (e: React.MouseEvent) => {
+      const i = getIndex(e);
+      if (i !== null && i !== hoveredRoom) onHoverRoom(i);
+    },
+    [hoveredRoom, onHoverRoom],
+  );
+
+  const handleMouseLeave = useCallback(() => onHoverRoom(null), [onHoverRoom]);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const i = getIndex(e);
+      if (i !== null) onSelectRoom(activeRoom === i ? null : i);
+    },
+    [activeRoom, onSelectRoom],
+  );
+
+  // --- Delegated drag handlers on grid ---
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    const i = getIndex(e);
+    if (i === null) return;
+    setDragIndex(i);
     e.dataTransfer.effectAllowed = "move";
-    requestAnimationFrame(() => {
-      if (dragNodeRef.current) {
-        dragNodeRef.current.style.opacity = "0.4";
-      }
-    });
-  }, []);
 
-  const handleDragEnd = useCallback(() => {
-    if (dragNodeRef.current) {
-      dragNodeRef.current.style.opacity = "1";
-    }
-    setDragIndex(null);
-    setDropIndex(null);
-    dragNodeRef.current = null;
+    const el = (e.target as HTMLElement).closest(`[${DATA_ATTR}]`) as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const pad = 8;
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${rect.width + pad * 2}px;height:${rect.height + pad * 2}px;padding:${pad}px`;
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.width = `${rect.width}px`;
+    clone.style.opacity = "1";
+    const isDark =
+      document.documentElement.classList.contains("dark") ||
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    clone.style.backgroundColor = isDark ? "#18181b" : "#ffffff";
+    clone.style.borderRadius = "0.5rem";
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    ghostRef.current = wrapper;
+    e.dataTransfer.setDragImage(wrapper, rect.width / 2 + pad, rect.height / 2 + pad);
   }, []);
 
   const handleDragOver = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    (e: React.DragEvent) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
-      if (dragIndex !== null && index !== dragIndex) {
-        setDropIndex(index);
+      const i = getIndex(e);
+      if (i !== null && dragIndex !== null && i !== dragIndex) {
+        setDropIndex(i);
       }
     },
     [dragIndex],
   );
 
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the grid entirely
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDropIndex(null);
+    }
+  }, []);
+
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    (e: React.DragEvent) => {
       e.preventDefault();
-      if (dragIndex !== null && dragIndex !== index && onReorderRooms) {
-        onReorderRooms(dragIndex, index);
+      const i = getIndex(e);
+      if (i !== null && dragIndex !== null && dragIndex !== i && onReorderRooms) {
+        onReorderRooms(dragIndex, i);
       }
       setDragIndex(null);
       setDropIndex(null);
@@ -71,34 +161,40 @@ export function RoomCardGrid({
     [dragIndex, onReorderRooms],
   );
 
+  const handleDragEnd = useCallback(() => {
+    if (ghostRef.current) {
+      ghostRef.current.remove();
+      ghostRef.current = null;
+    }
+    setDragIndex(null);
+    setDropIndex(null);
+  }, []);
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <div
+      className="grid grid-cols-2 gap-3 md:grid-cols-3"
+      onMouseOver={handleMouseOver}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
+    >
       {rooms.map((room, i) => (
-        <div
-          key={i}
-          draggable={!!onReorderRooms}
-          onDragStart={(e) => handleDragStart(e, i)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, i)}
-          onDrop={(e) => handleDrop(e, i)}
-          className={`${
-            dropIndex === i && dragIndex !== null && dragIndex !== i
-              ? "ring-2 ring-blue-400 ring-offset-1 dark:ring-offset-zinc-950"
-              : ""
-          } rounded-lg transition-shadow`}
-        >
-          <RoomCard
-            room={room}
-            colorIndex={i}
-            isHighlighted={hoveredRoom === i}
-            isDimmed={hoveredRoom !== null && hoveredRoom !== i}
-            isActive={activeRoom === i}
-            onMouseEnter={() => onHoverRoom(i)}
-            onMouseLeave={() => onHoverRoom(null)}
-            onSelect={() => onSelectRoom(activeRoom === i ? null : i)}
-            onUpdate={(fields) => onUpdateRoom(i, fields)}
-          />
-        </div>
+        <DraggableCard
+          key={room.colorIndex ?? i}
+          room={room}
+          index={i}
+          isHighlighted={hoveredRoom === i}
+          isDimmed={hoveredRoom !== null && hoveredRoom !== i}
+          isActive={activeRoom === i}
+          isDragging={dragIndex === i}
+          isDropTarget={dropIndex === i && dragIndex !== null && dragIndex !== i}
+          draggable={draggable}
+          onUpdate={onUpdateRoom}
+        />
       ))}
     </div>
   );
