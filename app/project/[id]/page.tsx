@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useProjectsContext } from "../../components/ClientLayout";
 import { FloorPlanEditor, useFloorPlanEditor } from "../../components/FloorPlanEditor";
@@ -29,13 +29,11 @@ export default function ProjectPage() {
   const { addImage } = useGallery(params.id);
 
   const [pasteTarget, setPasteTarget] = useState<PasteTarget>("floorplan");
-  const pasteTargetRef = useRef<PasteTarget>("floorplan");
-  pasteTargetRef.current = pasteTarget;
 
   // Paste routing: floor plan or gallery based on focus
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      if (pasteTargetRef.current === "gallery") {
+      if (pasteTarget === "gallery") {
         handleGalleryPaste(e, addImage);
       } else {
         const items = e.clipboardData?.items;
@@ -52,7 +50,7 @@ export default function ProjectPage() {
 
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
-  }, [addImage, editor]);
+  }, [addImage, editor, pasteTarget]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
