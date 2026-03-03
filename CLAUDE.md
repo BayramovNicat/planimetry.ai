@@ -14,6 +14,8 @@ bun lint:check     # ESLint check only
 bun format:check   # Prettier check only
 ```
 
+**Important**: Do NOT run `bun build`, `bun lint`, `bun format`, or any lint/format/build commands automatically. Only run them when explicitly asked by the user.
+
 Docker: `docker build -t planimetry . && docker run -p 3000:3000 -e GEMINI_API_KEY=key planimetry`
 
 ## Environment Variables
