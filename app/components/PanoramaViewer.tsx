@@ -34,6 +34,8 @@ const FRAGMENT_SHADER = `
   precision highp float;
   varying vec2 vTexCoord;
   uniform sampler2D uTexture;
+  uniform sampler2D uTextureNext;
+  uniform float uTransitionProgress;
   uniform float uYaw;
   uniform float uPitch;
   uniform float uFov;
@@ -64,8 +66,11 @@ const FRAGMENT_SHADER = `
 
     float u = 0.5 - theta / (2.0 * PI);
     float v = 0.5 - phi / PI;
-
-    gl_FragColor = texture2D(uTexture, vec2(u, v));
+    
+    vec4 color1 = texture2D(uTexture, vec2(u, v));
+    vec4 color2 = texture2D(uTextureNext, vec2(u, v));
+    
+    gl_FragColor = mix(color1, color2, uTransitionProgress);
   }
 `;
 
@@ -115,6 +120,17 @@ interface PanoramaViewerProps {
   onNorthAngleChange?: (angle: number) => void;
 }
 
+const VIEWER_CONFIG = {
+  defaultFov: 75,
+  minFov: 30,
+  maxFov: 120,
+  zoomSpeed: 0.05,
+  pointerSensitivity: 0.003,
+  keyboardRotateSpeed: 0.025,
+  autoRotateSpeed: 0.002,
+  transitionDurationMs: 300.0,
+};
+
 let sceneCounter = 0;
 let persistedYaw = 0;
 
@@ -131,6 +147,9 @@ export function PanoramaViewer({
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const programRef = useRef<WebGLProgram | null>(null);
   const textureRef = useRef<WebGLTexture | null>(null);
+  const nextTextureRef = useRef<WebGLTexture | null>(null);
+  const transitionStartRef = useRef<number>(0);
+  const isTransitioningRef = useRef(false);
   const rafRef = useRef<number>(0);
   const hotspotElsRef = useRef<Map<number, HTMLElement>>(new Map());
   const hotspotsDataRef = useRef<PanoramaHotspot[]>([]);
@@ -166,7 +185,7 @@ export function PanoramaViewer({
 
   const yawRef = useRef(persistedYaw + northAngle);
   const pitchRef = useRef(0);
-  const fovRef = useRef(75);
+  const fovRef = useRef(VIEWER_CONFIG.defaultFov);
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
   const imageLoadedRef = useRef(false);
@@ -213,6 +232,9 @@ export function PanoramaViewer({
 
     // Cache uniform locations — avoids GL state queries every frame
     uniformLocsRef.current = {
+      uTexture: gl.getUniformLocation(program, "uTexture"),
+      uTextureNext: gl.getUniformLocation(program, "uTextureNext"),
+      uTransitionProgress: gl.getUniformLocation(program, "uTransitionProgress"),
       uYaw: gl.getUniformLocation(program, "uYaw"),
       uPitch: gl.getUniformLocation(program, "uPitch"),
       uFov: gl.getUniformLocation(program, "uFov"),
@@ -238,31 +260,48 @@ export function PanoramaViewer({
 
     const texture = gl.createTexture()!;
     textureRef.current = texture;
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      1,
-      1,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      new Uint8Array([30, 30, 30, 255]),
-    );
+    const nextTexture = gl.createTexture()!;
+    nextTextureRef.current = nextTexture;
+
+    // Init both to black so logic doesn't crash on crossfade
+    for (const tex of [texture, nextTexture]) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        new Uint8Array([30, 30, 30, 255]),
+      );
+    }
   }, []);
 
   const uploadTexture = useCallback((dataUrl: string) => {
     setLoading(true);
-    imageLoadedRef.current = false;
 
     const img = new Image();
     img.onload = () => {
       const gl = glRef.current;
-      const texture = textureRef.current;
-      if (!gl || !texture) return;
+      const currentTexture = textureRef.current;
+      const nextTexture = nextTextureRef.current;
+      if (!gl || !currentTexture || !nextTexture) return;
 
-      gl.bindTexture(gl.TEXTURE_2D, texture);
+      // Start fade only if we already had a valid image loaded
+      if (imageLoadedRef.current) {
+        // Swap refs so current becomes 'old' and next becomes 'new'
+        textureRef.current = nextTexture;
+        nextTextureRef.current = currentTexture;
+        isTransitioningRef.current = true;
+        transitionStartRef.current = performance.now();
+      }
+
+      // We always render the requested image into textureRef.current (which is now our "new" texture)
+      const targetTex = textureRef.current;
+      gl.bindTexture(gl.TEXTURE_2D, targetTex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
       const isPow2 = (v: number) => (v & (v - 1)) === 0;
@@ -292,12 +331,12 @@ export function PanoramaViewer({
     }
 
     if (autoRotateRef.current && !isDraggingRef.current) {
-      yawRef.current += 0.002;
+      yawRef.current += VIEWER_CONFIG.autoRotateSpeed;
     }
 
     const keys = keysDownRef.current;
     if (keys.size > 0) {
-      const speed = 0.025;
+      const speed = VIEWER_CONFIG.keyboardRotateSpeed;
       if (keys.has("ArrowLeft")) yawRef.current -= speed;
       if (keys.has("ArrowRight")) yawRef.current += speed;
     }
@@ -326,6 +365,32 @@ export function PanoramaViewer({
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     const locs = uniformLocsRef.current;
+
+    // Bind textures and compute transition progress
+    gl.activeTexture(gl.TEXTURE0);
+    if (isTransitioningRef.current) {
+      // old image is in nextTextureRef, new image is in textureRef
+      gl.bindTexture(gl.TEXTURE_2D, nextTextureRef.current);
+    } else {
+      gl.bindTexture(gl.TEXTURE_2D, textureRef.current);
+    }
+    gl.uniform1i(locs.uTexture!, 0);
+
+    let progress = 0;
+    if (isTransitioningRef.current) {
+      const elapsed = performance.now() - transitionStartRef.current;
+      progress = Math.min(1.0, elapsed / VIEWER_CONFIG.transitionDurationMs);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, textureRef.current);
+      gl.uniform1i(locs.uTextureNext!, 1);
+
+      if (progress >= 1.0) {
+        isTransitioningRef.current = false;
+      }
+    }
+
+    gl.uniform1f(locs.uTransitionProgress!, progress);
     gl.uniform1f(locs.uYaw!, yawRef.current);
     gl.uniform1f(locs.uPitch!, pitchRef.current);
     gl.uniform1f(locs.uFov!, fovRef.current);
@@ -408,7 +473,7 @@ export function PanoramaViewer({
         `[Pano] Scene changed to "${scenes[activeScene].name}" | yaw ${Math.round(adjustedYaw)}°`,
       );
       pitchRef.current = 0;
-      fovRef.current = 75;
+      fovRef.current = VIEWER_CONFIG.defaultFov;
       uploadTexture(scenes[activeScene].dataUrl);
     }
   }, [activeScene, scenes, uploadTexture]);
@@ -475,7 +540,8 @@ export function PanoramaViewer({
       const dy = e.clientY - lastMouseRef.current.y;
       lastMouseRef.current = { x: e.clientX, y: e.clientY };
 
-      const sensitivity = 0.003 * (fovRef.current / 75);
+      const sensitivity =
+        VIEWER_CONFIG.pointerSensitivity * (fovRef.current / VIEWER_CONFIG.defaultFov);
       yawRef.current -= dx * sensitivity;
       pitchRef.current += dy * sensitivity;
 
@@ -491,8 +557,11 @@ export function PanoramaViewer({
     const onWheel = (e: WheelEvent) => {
       if (scenes.length === 0) return;
       e.preventDefault();
-      fovRef.current += e.deltaY * 0.05;
-      fovRef.current = Math.max(30, Math.min(120, fovRef.current));
+      fovRef.current += e.deltaY * VIEWER_CONFIG.zoomSpeed;
+      fovRef.current = Math.max(
+        VIEWER_CONFIG.minFov,
+        Math.min(VIEWER_CONFIG.maxFov, fovRef.current),
+      );
     };
 
     canvas.addEventListener("pointerdown", onPointerDown);
