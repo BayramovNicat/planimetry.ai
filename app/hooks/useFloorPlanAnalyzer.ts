@@ -6,12 +6,14 @@ import { normalizeRooms } from "../components/canvas/normalizeRooms";
 import type { AnalysisResult, Project } from "../types";
 import { calculateDimensions } from "../utils/dimensions";
 import { fileToBase64 } from "../utils/fileToBase64";
+import { saveImage } from "../utils/imageStore";
+import { loadProjectImage } from "./useProjects";
 
 const MAX_HISTORY = 50;
 
 interface UseFloorPlanAnalyzerOptions {
   project: Project | null;
-  onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void;
+  onUpdate: (data: Partial<Pick<Project, "imageId" | "result">>) => void;
   /** When true, skip the global paste listener (caller manages paste routing) */
   disablePaste?: boolean;
 }
@@ -21,7 +23,7 @@ export function useFloorPlanAnalyzer({
   onUpdate,
   disablePaste,
 }: UseFloorPlanAnalyzerOptions) {
-  const [image, setImage] = useState<string | null>(project?.image ?? null);
+  const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(project?.result ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -34,27 +36,40 @@ export function useFloorPlanAnalyzer({
   const [, setHistorySize] = useState(0);
 
   // Sync state when project changes (switching projects)
-  const lastProjectId = useRef<string | null>(null);
+  const [prevProjectId, setPrevProjectId] = useState<string | null>(null);
+  const currentId = project?.id ?? null;
+
+  if (currentId !== prevProjectId) {
+    setPrevProjectId(currentId);
+    setResult(project?.result ?? null);
+    setError(null);
+    setLoading(false);
+    setHoveredRoom(null);
+    setActiveRoom(null);
+    undoStack.current = [];
+    redoStack.current = [];
+    setHistorySize(0);
+  }
+
   const handleImageRef = useRef<((base64: string) => Promise<void>) | null>(null);
 
   useEffect(() => {
-    const currentId = project?.id ?? null;
-    if (currentId !== lastProjectId.current) {
-      lastProjectId.current = currentId;
-      setImage(project?.image ?? null);
-      setResult(project?.result ?? null);
-      setError(null);
-      setLoading(false);
-      setHoveredRoom(null);
-      setActiveRoom(null);
-      undoStack.current = [];
-      redoStack.current = [];
-      setHistorySize(0);
-
-      // Auto-analyze if project has image but no result yet
-      if (project?.image && !project?.result) {
-        handleImageRef.current?.(project.image);
-      }
+    // Load image from IDB
+    if (project) {
+      let cancelled = false;
+      loadProjectImage(project).then((base64) => {
+        if (cancelled) return;
+        setImage(base64);
+        // Auto-analyze if project has image but no result yet
+        if (base64 && !project.result) {
+          handleImageRef.current?.(base64);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    } else {
+      setImage(null);
     }
   }, [project]);
 
@@ -96,46 +111,57 @@ export function useFloorPlanAnalyzer({
   const canUndo = undoStack.current.length > 0;
   const canRedo = redoStack.current.length > 0;
 
-  const handleImage = useCallback(async (base64: string) => {
-    setImage(base64);
-    setResult(null);
-    setError(null);
-    setLoading(true);
-    undoStack.current = [];
-    redoStack.current = [];
-    setHistorySize(0);
-    onUpdateRef.current({ image: base64, result: null });
+  const handleImage = useCallback(
+    async (base64: string) => {
+      setImage(base64);
+      setResult(null);
+      setError(null);
+      setLoading(true);
+      undoStack.current = [];
+      redoStack.current = [];
+      setHistorySize(0);
 
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(35_000),
-        body: JSON.stringify({ image: base64 }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Request failed (${res.status})`);
+      // Save image to IDB and update project reference
+      if (project) {
+        const imageId = `fp_${project.id}`;
+        saveImage(imageId, base64).catch((e) =>
+          console.error("[Planimetry] Failed to save floor plan image:", e),
+        );
       }
+      onUpdateRef.current({ result: null });
 
-      const data: AnalysisResult = await res.json();
-      // Assign stable colorIndex to each room
-      data.rooms = data.rooms.map((r, i) => ({ ...r, colorIndex: r.colorIndex ?? i }));
-      setResult(data);
-      onUpdateRef.current({ result: data });
-    } catch (err) {
-      const msg =
-        err instanceof DOMException && err.name === "TimeoutError"
-          ? "Analysis timed out — the AI took too long. Please try again."
-          : err instanceof Error
-            ? err.message
-            : "Something went wrong";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(35_000),
+          body: JSON.stringify({ image: base64 }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Request failed (${res.status})`);
+        }
+
+        const data: AnalysisResult = await res.json();
+        // Assign stable colorIndex to each room
+        data.rooms = data.rooms.map((r, i) => ({ ...r, colorIndex: r.colorIndex ?? i }));
+        setResult(data);
+        onUpdateRef.current({ result: data });
+      } catch (err) {
+        const msg =
+          err instanceof DOMException && err.name === "TimeoutError"
+            ? "Analysis timed out — the AI took too long. Please try again."
+            : err instanceof Error
+              ? err.message
+              : "Something went wrong";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [project],
+  );
 
   handleImageRef.current = handleImage;
 

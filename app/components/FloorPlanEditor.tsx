@@ -1,11 +1,12 @@
 "use client";
 
 import { Link, Redo2, Scissors, Undo2, X } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFloorPlanAnalyzer } from "../hooks/useFloorPlanAnalyzer";
 import type { AnalysisResult, Project } from "../types";
 import { wallArea } from "../utils/dimensions";
+import { getImage } from "../utils/imageStore";
 import { FloorPlanCanvas } from "./FloorPlanCanvas";
 import { ImagePreview } from "./ImagePreview";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -21,7 +22,7 @@ function computeTotalArea(result: AnalysisResult): number {
 
 export function useFloorPlanEditor(
   project: Project | null,
-  onUpdate: (data: Partial<Pick<Project, "image" | "result">>) => void,
+  onUpdate: (data: Partial<Pick<Project, "imageId" | "result">>) => void,
   options?: { disablePaste?: boolean },
 ) {
   const { activeRoom, remeasureRoom, ...rest } = useFloorPlanAnalyzer({
@@ -70,10 +71,13 @@ export type FloorPlanEditorState = ReturnType<typeof useFloorPlanEditor>;
 export function FloorPlanEditor({
   state,
   imgClassName,
+  galleryImages,
 }: {
   state: FloorPlanEditorState;
   /** Extra class for the <img> inside ImagePreview, e.g. "max-h-64" */
   imgClassName?: string;
+  /** Gallery images with loaded base64 — used for panorama lookup */
+  galleryImages?: Array<{ id: string; base64?: string }>;
 }) {
   const {
     image,
@@ -103,6 +107,33 @@ export function FloorPlanEditor({
   } = state;
 
   const [panoramaRoom, setPanoramaRoom] = useState<number | null>(null);
+  const [panoBase64, setPanoBase64] = useState<string | undefined>(undefined);
+  const [prevPanoImgId, setPrevPanoImgId] = useState<string | undefined>(undefined);
+
+  // Load panorama image from IDB when panoramaRoom changes
+  const panoImgId = result?.rooms[panoramaRoom ?? -1]?.panoramaImageId;
+
+  // Adjust state during render if the ID changes
+  if (prevPanoImgId !== panoImgId) {
+    setPrevPanoImgId(panoImgId);
+    const fromGallery = galleryImages?.find((g) => g.id === panoImgId)?.base64;
+    setPanoBase64(fromGallery);
+  }
+
+  useEffect(() => {
+    if (!panoImgId || panoBase64) {
+      return;
+    }
+
+    // Load from IDB
+    let cancelled = false;
+    getImage(panoImgId).then((base64) => {
+      if (!cancelled && base64) setPanoBase64(base64);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [panoImgId, panoBase64]);
 
   const panoramaHotspots = useMemo<PanoramaHotspot[]>(() => {
     if (panoramaRoom === null || !result?.connections) return [];
@@ -138,15 +169,10 @@ export function FloorPlanEditor({
 
   if (!image) return null;
 
-  const panoImgId = result?.rooms[panoramaRoom ?? -1]?.panoramaImageId;
-  const panoImgBase64 = panoImgId
-    ? state.project?.gallery?.find((g) => g.id === panoImgId)?.base64
-    : undefined;
-
   return (
     <div className="flex flex-col gap-6" onKeyDown={handleKeyDown}>
       {/* 1. Full-screen Modal for Panorama */}
-      {panoramaRoom !== null && panoImgBase64 && (
+      {panoramaRoom !== null && panoBase64 && (
         <div
           className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/80 p-4 backdrop-blur-md sm:p-8"
           onClick={(e) => {
@@ -157,7 +183,7 @@ export function FloorPlanEditor({
           <div className="relative w-full max-w-6xl overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10">
             <PanoramaViewer
               sceneName={result?.rooms[panoramaRoom]?.name}
-              initialImage={panoImgBase64}
+              initialImage={panoBase64}
               hotspots={panoramaHotspots}
               onNavigate={setPanoramaRoom}
               northAngle={result?.rooms[panoramaRoom]?.panoramaNorthAngle ?? 0}

@@ -22,14 +22,16 @@ export interface AnalysisResult {
 
 export interface GalleryImage {
   id: string;
-  base64: string;
+  /** Base64 data URL — only present at runtime after loading from IndexedDB */
+  base64?: string;
   createdAt: number;
 }
 
 export interface Project {
   id: string;
   name: string;
-  image: string | null;
+  /** Reference ID to the floor plan image stored in IndexedDB */
+  imageId?: string;
   result: AnalysisResult | null;
   createdAt: number;
   gallery?: GalleryImage[];

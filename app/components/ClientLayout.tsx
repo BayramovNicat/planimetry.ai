@@ -10,17 +10,17 @@ import { Sidebar } from "./Sidebar";
 interface ProjectsContextValue {
   projects: Project[];
   activeId: string | null;
-  addProject: (image: string) => string;
+  addProject: (image: string) => Promise<string>;
   updateProject: (
     id: string,
-    partial: Partial<Pick<Project, "image" | "result" | "name" | "gallery">>,
+    partial: Partial<Pick<Project, "imageId" | "result" | "name" | "gallery">>,
   ) => void;
 }
 
 const ProjectsContext = createContext<ProjectsContextValue>({
   projects: [],
   activeId: null,
-  addProject: () => "",
+  addProject: async () => "",
   updateProject: () => {},
 });
 

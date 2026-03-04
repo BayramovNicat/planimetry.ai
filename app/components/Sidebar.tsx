@@ -13,7 +13,7 @@ interface SidebarProps {
   activeId: string | null;
   collapsed: boolean;
   onToggle: () => void;
-  onDelete: (id: string) => string | null;
+  onDelete: (id: string) => Promise<string | null>;
   onRename: (id: string, name: string) => void;
 }
 

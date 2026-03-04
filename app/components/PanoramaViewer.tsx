@@ -163,26 +163,6 @@ export function PanoramaViewer({
   );
   const [activeScene, setActiveScene] = useState(0);
 
-  // Sync scenes when initialImage/sceneName prop changes
-  useEffect(() => {
-    if (initialImage) {
-      setScenes([
-        { id: String(++sceneCounter), name: sceneName || "Panorama", dataUrl: initialImage },
-      ]);
-      setActiveScene(0);
-      // When navigating between rooms, sync the camera yaw to the persisted compass view
-      // We explicitly exclude `northAngle` from dependencies to avoid resetting when calibrated!
-      yawRef.current = persistedYaw + northAngle;
-    } else {
-      setScenes([]);
-      setActiveScene(0);
-    }
-  }, [initialImage, sceneName, northAngle]);
-
-  const [loading, setLoading] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-
   const yawRef = useRef(persistedYaw + northAngle);
   const pitchRef = useRef(0);
   const fovRef = useRef(VIEWER_CONFIG.defaultFov);
@@ -199,21 +179,34 @@ export function PanoramaViewer({
 
   const glInitedRef = useRef(false);
 
-  // Sync hotspots prop to ref for use in render loop
-  useEffect(() => {
-    hotspotsDataRef.current = hotspots ?? [];
-  }, [hotspots]);
+  // Sync scenes when initialImage/sceneName prop changes
+  const [prevInitialImage, setPrevInitialImage] = useState<string | undefined>(undefined);
+  if (initialImage !== prevInitialImage) {
+    setPrevInitialImage(initialImage);
+    if (initialImage) {
+      setScenes([
+        { id: String(++sceneCounter), name: sceneName || "Panorama", dataUrl: initialImage },
+      ]);
+      setActiveScene(0);
+      // When navigating between rooms, sync the camera yaw to the persisted compass view
+      // We explicitly exclude `northAngle` from dependencies to avoid resetting when calibrated!
+      yawRef.current = persistedYaw + (northAngle ?? 0);
+    } else {
+      setScenes([]);
+      setActiveScene(0);
+    }
+  }
 
   useEffect(() => {
-    northAngleRef.current = northAngle;
-  }, [northAngle]);
-
-  // Re-focus container when initialImage changes (room navigation)
-  useEffect(() => {
+    // Re-focus container when initialImage changes (room navigation)
     if (initialImage) {
       requestAnimationFrame(() => containerRef.current?.focus());
     }
   }, [initialImage]);
+
+  const [loading, setLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const initGL = useCallback(() => {
     if (glInitedRef.current) return;

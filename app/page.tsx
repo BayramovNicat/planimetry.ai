@@ -16,7 +16,7 @@ export default function Home() {
     async (file: File) => {
       if (!file.type.startsWith("image/")) return;
       const base64 = await fileToBase64(file);
-      const id = addProject(base64);
+      const id = await addProject(base64);
       router.push(`/project/${id}`);
     },
     [addProject, router],

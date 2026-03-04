@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import type { Project } from "../types";
+import { deleteImages, getImage, saveImage } from "../utils/imageStore";
 
 const STORAGE_KEY = "planimetry-projects";
 
@@ -78,12 +79,15 @@ export function useProjects() {
   const projects = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const addProject = useCallback(
-    (image: string): string => {
+    async (imageBase64: string): Promise<string> => {
       const id = generateId();
+      const imageId = `fp_${id}`;
+      await saveImage(imageId, imageBase64);
+
       const project: Project = {
         id,
         name: `Plan ${projects.length + 1}`,
-        image,
+        imageId,
         result: null,
         createdAt: Date.now(),
       };
@@ -94,9 +98,21 @@ export function useProjects() {
   );
 
   const deleteProject = useCallback(
-    (id: string): string | null => {
+    async (id: string): Promise<string | null> => {
       const idx = projects.findIndex((p) => p.id === id);
       if (idx === -1) return null;
+
+      const project = projects[idx];
+      // Clean up IDB images
+      const imageIds: string[] = [];
+      if (project.imageId) imageIds.push(project.imageId);
+      if (project.gallery) {
+        for (const img of project.gallery) imageIds.push(img.id);
+      }
+      deleteImages(imageIds).catch((e) =>
+        console.error("[Planimetry] Failed to delete images from IDB:", e),
+      );
+
       const next = projects.filter((p) => p.id !== id);
       persistAndEmit(next);
       if (next.length === 0) return null;
@@ -107,7 +123,7 @@ export function useProjects() {
   );
 
   const updateProject = useCallback(
-    (id: string, partial: Partial<Pick<Project, "image" | "result" | "name" | "gallery">>) => {
+    (id: string, partial: Partial<Pick<Project, "imageId" | "result" | "name" | "gallery">>) => {
       const next = projects.map((p) => (p.id === id ? { ...p, ...partial } : p));
       persistAndEmit(next);
     },
@@ -128,4 +144,15 @@ export function useProjects() {
     updateProject,
     renameProject,
   };
+}
+
+/* ── Image loading helper ─────────────────────────────────────── */
+
+export async function loadProjectImage(project: Project): Promise<string | null> {
+  if (project.imageId) return getImage(project.imageId);
+  return null;
+}
+
+export async function loadGalleryImage(imageId: string): Promise<string | null> {
+  return getImage(imageId);
 }

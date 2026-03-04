@@ -16,14 +16,14 @@ export default function ComparePage() {
   const project2 = projects.find((p) => p.id === params.id2) ?? null;
 
   const onUpdateLeft = useCallback(
-    (data: Partial<Pick<Project, "image" | "result">>) => {
+    (data: Partial<Pick<Project, "imageId" | "result">>) => {
       if (params.id1) updateProject(params.id1, data);
     },
     [params.id1, updateProject],
   );
 
   const onUpdateRight = useCallback(
-    (data: Partial<Pick<Project, "image" | "result">>) => {
+    (data: Partial<Pick<Project, "imageId" | "result">>) => {
       if (params.id2) updateProject(params.id2, data);
     },
     [params.id2, updateProject],
