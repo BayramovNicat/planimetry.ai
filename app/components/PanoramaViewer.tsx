@@ -688,8 +688,11 @@ export function PanoramaViewer({
                 style={{ display: "none", opacity: 0.85 }}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/40">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white drop-shadow-md">
-                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 fill-none stroke-white stroke-[2.5] drop-shadow-md"
+                  >
+                    <polyline points="6 15 12 9 18 15" />
                   </svg>
                 </div>
                 <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-white/90 shadow backdrop-blur-sm">
