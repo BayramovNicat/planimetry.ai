@@ -11,10 +11,9 @@ import { GalleryLightbox } from "./GalleryLightbox";
 interface GalleryProps {
   project: Project;
   updateProject: (id: string, partial: { gallery?: GalleryImage[] }) => void;
-  onFocus: () => void;
 }
 
-export function Gallery({ project, updateProject, onFocus }: GalleryProps) {
+export function Gallery({ project, updateProject }: GalleryProps) {
   const { images, addImage, deleteImage } = useGallery(project, updateProject);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -43,7 +42,6 @@ export function Gallery({ project, updateProject, onFocus }: GalleryProps) {
   return (
     <div
       tabIndex={0}
-      onFocus={onFocus}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       className="outline-none"
