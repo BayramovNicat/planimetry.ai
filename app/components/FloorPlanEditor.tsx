@@ -145,23 +145,34 @@ export function FloorPlanEditor({
 
   return (
     <div className="flex flex-col gap-6" onKeyDown={handleKeyDown}>
-      {/* 1. Split view or unified view based on active panorama */}
+      {/* 1. Full-screen Modal for Panorama */}
       {panoramaRoom !== null && panoImgBase64 && (
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-zinc-200 bg-black dark:border-zinc-800">
-          <PanoramaViewer
-            sceneName={result?.rooms[panoramaRoom]?.name}
-            initialImage={panoImgBase64}
-            hotspots={panoramaHotspots}
-            onNavigate={setPanoramaRoom}
-            northAngle={result?.rooms[panoramaRoom]?.panoramaNorthAngle ?? 0}
-            onNorthAngleChange={(angle) => updateRoom(panoramaRoom, { panoramaNorthAngle: angle })}
-          />
-          <button
-            onClick={() => setPanoramaRoom(null)}
-            className="absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:bg-black/70 hover:text-white"
-          >
-            <X size={18} />
-          </button>
+        <div
+          className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-black/80 p-4 backdrop-blur-md sm:p-8"
+          onClick={(e) => {
+            // Close modal if clicking the backdrop
+            if (e.target === e.currentTarget) setPanoramaRoom(null);
+          }}
+        >
+          <div className="relative w-full max-w-6xl overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10">
+            <PanoramaViewer
+              sceneName={result?.rooms[panoramaRoom]?.name}
+              initialImage={panoImgBase64}
+              hotspots={panoramaHotspots}
+              onNavigate={setPanoramaRoom}
+              northAngle={result?.rooms[panoramaRoom]?.panoramaNorthAngle ?? 0}
+              onNorthAngleChange={(angle) =>
+                updateRoom(panoramaRoom, { panoramaNorthAngle: angle })
+              }
+            />
+            <button
+              onClick={() => setPanoramaRoom(null)}
+              className="absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-all hover:scale-110 hover:bg-red-500/80 hover:text-white"
+              title="Close viewer (Esc)"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
       )}
 
