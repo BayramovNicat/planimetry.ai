@@ -7,6 +7,7 @@ import { useProjectsContext } from "../../components/ClientLayout";
 import { FloorPlanEditor, useFloorPlanEditor } from "../../components/FloorPlanEditor";
 import { Gallery, handleGalleryPaste } from "../../components/Gallery";
 import { ImageDropZone } from "../../components/ImageDropZone";
+import { PanoramaViewer } from "../../components/PanoramaViewer";
 import { useGallery } from "../../hooks/useGallery";
 
 type PasteTarget = "floorplan" | "gallery";
@@ -110,6 +111,10 @@ export default function ProjectPage() {
 
         <div className="mt-6">
           <Gallery projectId={params.id} onFocus={() => setPasteTarget("gallery")} />
+        </div>
+
+        <div className="mt-6">
+          <PanoramaViewer />
         </div>
       </div>
     </div>
