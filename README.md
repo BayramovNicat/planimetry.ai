@@ -1,22 +1,61 @@
 # Planimetry
 
-AI-powered floor plan analyzer. Upload a floor plan image and get room dimensions, areas, and an interactive layout visualization.
+AI-powered floor plan analyzer. Upload a floor plan image and get room dimensions, areas, and an interactive layout visualization — plus panoramic room views, image galleries, and side-by-side project comparison.
 
 ## Features
 
-- **Multi-project sidebar** — manage multiple floor plan analyses from a collapsible sidebar. Each plan has its own URL (`/project/[id]`).
-- **Quick actions** — when the sidebar is collapsed, a `+` button appears below the menu toggle for creating a new plan without opening the sidebar.
-- **Search** — search projects by name directly from the sidebar header.
-- **Project management** — rename projects (double-click or 3-dot menu), delete via the context menu. Data persists across sessions in localStorage.
+### Floor Plan Analysis
+
 - Drag & drop, click, or paste (Ctrl+V) image upload
-- AI extraction of rooms, dimensions, and areas via Gemini
+- AI extraction of rooms, dimensions, and areas via Google Gemini
 - Interactive canvas with hover-highlighting across rooms and cards
-- **Manual remeasure** — click a room (card or canvas) to select it, then draw a rectangle on the uploaded image to correct its proportions. The aspect ratio of your drawn rectangle recalculates width/height while keeping the area unchanged.
-- **Draggable rooms** — drag rooms on the canvas to rearrange the layout. Rooms snap to each other's edges with visual snap guides.
-- **Inline editing** — double-click a room's name or area on the card to edit it. Changing the area automatically recalculates width/height while keeping the aspect ratio.
-- **Undo/redo** — Ctrl+Z to undo, Ctrl+Shift+Z to redo (up to 50 steps). Also available as icon buttons next to the total area pill. Covers all edits: drag, remeasure, name/area changes.
-- **Persistent storage** — all projects, images, and room data are saved to localStorage. Refresh or come back later and pick up where you left off.
-- Press **Escape** to deselect the active room
+
+### Canvas Editing
+
+- **Draggable rooms** — drag rooms on the canvas to rearrange the layout, with magnetic edge snapping
+- **Resize** — drag edge handles to resize rooms while preserving area
+- **Split** — divide a room horizontally or vertically with live dimension preview
+- **Merge** — Shift+click two rooms to merge them into a composite room
+- **Manual remeasure** — select a room, draw a rectangle on the image to correct its proportions
+
+### Room Cards
+
+- **Inline editing** — double-click a room's name or area to edit. Area changes recalculate dimensions
+- **Drag-to-reorder** — rearrange room cards by dragging
+- **Wall area** — automatically calculated per room (assuming 3m ceiling height)
+
+### Panorama Viewer
+
+- **WebGL equirectangular renderer** — real-time panoramic viewing with mouse/touch drag and scroll zoom
+- **Room connections** — link rooms on the canvas, then navigate between them with 3D-projected hotspots
+- **Arrow key navigation** — left/right to rotate, up/down to jump to connected rooms
+- **North angle calibration** — align panorama orientation with the floor plan
+- **Multi-scene support** — drop multiple panoramas, navigate with carousel dots
+- Fullscreen and auto-rotate
+
+### Gallery
+
+- Per-project image gallery with drag-and-drop / paste / file picker upload
+- Full-screen lightbox with keyboard navigation
+- **Panorama assignment** — drag a gallery image onto a room card to set it as the room's panorama
+
+### Project Management
+
+- **Multi-project sidebar** — manage multiple floor plan analyses. Each plan has its own URL (`/project/[id]`)
+- **Quick actions** — `+` button below the menu toggle when sidebar is collapsed
+- **Search** — search projects by name from the sidebar
+- **Rename & delete** — double-click or 3-dot menu to rename, delete via context menu
+- **Persistent storage** — all data saved to localStorage
+
+### Comparison
+
+- **Side-by-side view** — compare two projects at `/compare/[id1]/[id2]`
+- Independent editing with focus-based undo/redo
+
+### Undo/Redo
+
+- Ctrl+Z / Ctrl+Shift+Z (up to 50 steps)
+- Covers all edits: drag, resize, split, merge, rename, area, reorder, connections, panorama assignment
 
 ## Setup
 
