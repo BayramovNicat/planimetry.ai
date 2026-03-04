@@ -14,7 +14,7 @@ interface RoomCardGridProps {
   onSelectRoom: (index: number | null) => void;
   onUpdateRoom: (
     index: number,
-    fields: { name?: string; area?: number; panoramaImage?: string | null },
+    fields: { name?: string; area?: number; panoramaImageId?: string | null },
   ) => void;
   onReorderRooms?: (fromIndex: number, toIndex: number) => void;
   onViewPanorama?: (index: number) => void;
@@ -52,7 +52,7 @@ const DraggableCard = memo(function DraggableCard({
   draggable: boolean;
   onUpdate: (
     index: number,
-    fields: { name?: string; area?: number; panoramaImage?: string | null },
+    fields: { name?: string; area?: number; panoramaImageId?: string | null },
   ) => void;
   onViewPanorama?: () => void;
 }) {
@@ -149,7 +149,7 @@ export function RoomCardGrid({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
-      const isPanoDrag = e.dataTransfer.types.includes("application/x-panorama");
+      const isPanoDrag = e.dataTransfer.types.includes("application/x-panorama-id");
       if (isPanoDrag) {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
@@ -177,11 +177,11 @@ export function RoomCardGrid({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const panoData = e.dataTransfer.getData("application/x-panorama");
+      const panoData = e.dataTransfer.getData("application/x-panorama-id");
       if (panoData) {
         const i = getIndex(e);
         if (i !== null) {
-          onUpdateRoom(i, { panoramaImage: panoData });
+          onUpdateRoom(i, { panoramaImageId: panoData });
         }
         setPanoDropIndex(null);
         return;
@@ -232,7 +232,7 @@ export function RoomCardGrid({
           draggable={draggable}
           onUpdate={onUpdateRoom}
           onViewPanorama={
-            room.panoramaImage && onViewPanorama ? () => onViewPanorama(i) : undefined
+            room.panoramaImageId && onViewPanorama ? () => onViewPanorama(i) : undefined
           }
         />
       ))}

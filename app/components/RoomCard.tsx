@@ -76,7 +76,7 @@ export const RoomCard = memo(function RoomCard({
     >
       <div className="mb-1 flex items-center gap-2">
         <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.text }} />
-        {room.panoramaImage && (
+        {room.panoramaImageId && (
           <button
             onClick={(e) => {
               e.stopPropagation();

@@ -615,7 +615,7 @@ export function drawConnectionCircles(
   hoverIndex: number | null,
 ) {
   rooms.forEach((room, i) => {
-    if (!room.panoramaImage) return;
+    if (!room.panoramaImageId) return;
     const { x, y, w, h } = rects[i];
     const cx = x + w / 2;
     const cy = y + h / 2;

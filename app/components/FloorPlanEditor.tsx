@@ -61,6 +61,7 @@ export function useFloorPlanEditor(
     connectMode,
     setConnectMode,
     handleDrawRect,
+    project,
   };
 }
 
@@ -113,7 +114,7 @@ export function FloorPlanEditor({
 
     return result.connections
       .flatMap((c) => (c.from === panoramaRoom ? [c.to] : c.to === panoramaRoom ? [c.from] : []))
-      .filter((i) => result.rooms[i]?.panoramaImage)
+      .filter((i) => result.rooms[i]?.panoramaImageId)
       .map((i) => {
         const r = result.rooms[i];
         const [ry1, rx1, ry2, rx2] = r.bbox;
@@ -129,10 +130,41 @@ export function FloorPlanEditor({
     setPanoramaRoom(index);
   }, []);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setPanoramaRoom(null);
+    }
+  }, []);
+
   if (!image) return null;
 
+  const panoImgId = result?.rooms[panoramaRoom ?? -1]?.panoramaImageId;
+  const panoImgBase64 = panoImgId
+    ? state.project?.gallery?.find((g) => g.id === panoImgId)?.base64
+    : undefined;
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-6" onKeyDown={handleKeyDown}>
+      {/* 1. Split view or unified view based on active panorama */}
+      {panoramaRoom !== null && panoImgBase64 && (
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-zinc-200 bg-black dark:border-zinc-800">
+          <PanoramaViewer
+            sceneName={result?.rooms[panoramaRoom]?.name}
+            initialImage={panoImgBase64}
+            hotspots={panoramaHotspots}
+            onNavigate={setPanoramaRoom}
+            northAngle={result?.rooms[panoramaRoom]?.panoramaNorthAngle ?? 0}
+            onNorthAngleChange={(angle) => updateRoom(panoramaRoom, { panoramaNorthAngle: angle })}
+          />
+          <button
+            onClick={() => setPanoramaRoom(null)}
+            className="absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black/50 p-2 text-white/70 transition-colors hover:bg-black/70 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
       <ImagePreview
         src={image}
         overlay={loading ? <LoadingSkeleton /> : undefined}
@@ -249,41 +281,6 @@ export function FloorPlanEditor({
             onReorderRooms={reorderRooms}
             onViewPanorama={handleViewPanorama}
           />
-        </div>
-      )}
-
-      {/* Panorama overlay */}
-      {panoramaRoom !== null && result?.rooms[panoramaRoom]?.panoramaImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 md:p-8"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setPanoramaRoom(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setPanoramaRoom(null);
-          }}
-        >
-          <div className="relative w-full max-w-4xl">
-            <div className="mb-3 flex justify-end">
-              <button
-                onClick={() => setPanoramaRoom(null)}
-                className="cursor-pointer rounded p-1 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <PanoramaViewer
-              key={panoramaRoom}
-              initialImage={result.rooms[panoramaRoom].panoramaImage}
-              sceneName={result.rooms[panoramaRoom].name}
-              hotspots={panoramaHotspots}
-              onNavigate={setPanoramaRoom}
-              northAngle={result.rooms[panoramaRoom].panoramaNorthAngle ?? 0}
-              onNorthAngleChange={(angle) =>
-                updateRoom(panoramaRoom, { panoramaNorthAngle: angle })
-              }
-            />
-          </div>
         </div>
       )}
     </div>

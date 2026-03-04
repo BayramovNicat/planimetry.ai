@@ -8,8 +8,8 @@ export interface Room {
   subRects?: [number, number, number, number][];
   /** Stable color index assigned at creation, survives reordering */
   colorIndex?: number;
-  /** Base64 panorama image assigned from gallery drag-and-drop */
-  panoramaImage?: string;
+  /** ID of the panorama image from the project gallery */
+  panoramaImageId?: string;
   /** North angle offset for panorama in radians — aligns pano orientation to floor plan */
   panoramaNorthAngle?: number;
 }
@@ -32,4 +32,5 @@ export interface Project {
   image: string | null;
   result: AnalysisResult | null;
   createdAt: number;
+  gallery?: GalleryImage[];
 }

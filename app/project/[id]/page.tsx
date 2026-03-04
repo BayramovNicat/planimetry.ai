@@ -26,7 +26,7 @@ export default function ProjectPage() {
   );
 
   const editor = useFloorPlanEditor(project, onUpdate, { disablePaste: true });
-  const { addImage } = useGallery(params.id);
+  const { addImage } = useGallery(project, updateProject);
 
   const [pasteTarget, setPasteTarget] = useState<PasteTarget>("floorplan");
 
@@ -109,7 +109,11 @@ export default function ProjectPage() {
         )}
 
         <div className="mt-6">
-          <Gallery projectId={params.id} onFocus={() => setPasteTarget("gallery")} />
+          <Gallery
+            project={project}
+            updateProject={updateProject}
+            onFocus={() => setPasteTarget("gallery")}
+          />
         </div>
       </div>
     </div>

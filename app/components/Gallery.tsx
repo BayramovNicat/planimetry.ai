@@ -4,16 +4,18 @@ import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { useGallery } from "../hooks/useGallery";
+import type { GalleryImage, Project } from "../types";
 import { fileToBase64 } from "../utils/fileToBase64";
 import { GalleryLightbox } from "./GalleryLightbox";
 
 interface GalleryProps {
-  projectId: string;
+  project: Project;
+  updateProject: (id: string, partial: { gallery?: GalleryImage[] }) => void;
   onFocus: () => void;
 }
 
-export function Gallery({ projectId, onFocus }: GalleryProps) {
-  const { images, addImage, deleteImage } = useGallery(projectId);
+export function Gallery({ project, updateProject, onFocus }: GalleryProps) {
+  const { images, addImage, deleteImage } = useGallery(project, updateProject);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -80,7 +82,7 @@ export function Gallery({ projectId, onFocus }: GalleryProps) {
               key={img.id}
               draggable
               onDragStart={(e) => {
-                e.dataTransfer.setData("application/x-panorama", img.base64);
+                e.dataTransfer.setData("application/x-panorama-id", img.id);
                 e.dataTransfer.effectAllowed = "copy";
               }}
               className="group relative cursor-grab overflow-hidden rounded-lg border border-zinc-200 active:cursor-grabbing dark:border-zinc-700"

@@ -18,7 +18,7 @@ export function useCanvasConnect(rooms: Room[]) {
   const hitTestCircle = useCallback(
     (mx: number, my: number, rects: ScreenRect[]): number | null => {
       for (let i = rooms.length - 1; i >= 0; i--) {
-        if (!rooms[i].panoramaImage) continue;
+        if (!rooms[i].panoramaImageId) continue;
         const { x, y, w, h } = rects[i];
         const cx = x + w / 2;
         const cy = y + h / 2;

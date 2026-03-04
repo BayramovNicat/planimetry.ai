@@ -11,7 +11,10 @@ interface ProjectsContextValue {
   projects: Project[];
   activeId: string | null;
   addProject: (image: string) => string;
-  updateProject: (id: string, partial: Partial<Pick<Project, "image" | "result" | "name">>) => void;
+  updateProject: (
+    id: string,
+    partial: Partial<Pick<Project, "image" | "result" | "name" | "gallery">>,
+  ) => void;
 }
 
 const ProjectsContext = createContext<ProjectsContextValue>({

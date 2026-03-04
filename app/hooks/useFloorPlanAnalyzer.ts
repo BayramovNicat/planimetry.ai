@@ -184,7 +184,7 @@ export function useFloorPlanAnalyzer({
         width?: number;
         height?: number;
         bbox?: [number, number, number, number];
-        panoramaImage?: string | null;
+        panoramaImageId?: string | null;
         panoramaNorthAngle?: number;
       },
     ) => {
@@ -205,8 +205,9 @@ export function useFloorPlanAnalyzer({
       if (fields.width !== undefined) updated.width = fields.width;
       if (fields.height !== undefined) updated.height = fields.height;
       if (fields.bbox !== undefined) updated.bbox = fields.bbox;
-      if (fields.panoramaImage !== undefined) {
-        updated.panoramaImage = fields.panoramaImage === null ? undefined : fields.panoramaImage;
+      if (fields.panoramaImageId !== undefined) {
+        updated.panoramaImageId =
+          fields.panoramaImageId === null ? undefined : fields.panoramaImageId;
       }
       if (fields.panoramaNorthAngle !== undefined) {
         updated.panoramaNorthAngle = fields.panoramaNorthAngle;

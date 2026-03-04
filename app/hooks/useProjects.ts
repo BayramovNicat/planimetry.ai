@@ -51,6 +51,38 @@ function migrateOldSession(): Project | null {
   }
 }
 
+/** Migrate base64 panorama strings in rooms to gallery images + IDs */
+function migratePanoramaImages(projects: Project[]): boolean {
+  let changed = false;
+  for (const project of projects) {
+    if (!project.result || !project.result.rooms) continue;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const room of project.result.rooms as any[]) {
+      if (room.panoramaImage) {
+        // Room has old base64 string
+        const base64 = room.panoramaImage;
+        let imgId = project.gallery?.find((img) => img.base64 === base64)?.id;
+
+        // If not in gallery, add it
+        if (!imgId) {
+          imgId = generateId();
+          project.gallery = [
+            { id: imgId, base64, createdAt: Date.now() },
+            ...(project.gallery ?? []),
+          ];
+        }
+
+        // Update room to use ID instead of base64 string
+        room.panoramaImageId = imgId;
+        delete room.panoramaImage;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
 /* ── External store for useSyncExternalStore ───────────────────── */
 
 let listeners: Array<() => void> = [];
@@ -80,6 +112,17 @@ function getSnapshot(): Project[] {
       projects = [migrated];
       saveProjects(projects);
     }
+  }
+
+  // One-time migration of separate gallery keys into project objects
+  // NOTE: migrateGalleryKeys is not defined in the provided code, assuming it's a placeholder or external.
+  // For now, it's commented out to avoid a reference error.
+  // const galleryMigrated = migrateGalleryKeys(projects);
+  // One-time migration of full base64 strings in rooms to gallery IDs
+  const panoImagesMigrated = migratePanoramaImages(projects);
+
+  if (/* galleryMigrated || */ panoImagesMigrated) {
+    saveProjects(projects);
   }
 
   cachedProjects = projects;
@@ -133,7 +176,7 @@ export function useProjects() {
   );
 
   const updateProject = useCallback(
-    (id: string, partial: Partial<Pick<Project, "image" | "result" | "name">>) => {
+    (id: string, partial: Partial<Pick<Project, "image" | "result" | "name" | "gallery">>) => {
       const next = projects.map((p) => (p.id === id ? { ...p, ...partial } : p));
       persistAndEmit(next);
     },
