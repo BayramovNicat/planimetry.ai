@@ -3,6 +3,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Compass,
   Image as ImageIcon,
   Maximize2,
   Minimize2,
@@ -106,14 +107,21 @@ interface PanoramaViewerProps {
   initialImage?: string;
   hotspots?: PanoramaHotspot[];
   onNavigate?: (id: number) => void;
+  /** North angle offset in radians — rotates the panorama so angles align with floor plan */
+  northAngle?: number;
+  /** Called when user adjusts the north angle */
+  onNorthAngleChange?: (angle: number) => void;
 }
 
 let sceneCounter = 0;
+let persistedYaw = 0;
 
 export function PanoramaViewer({
   initialImage,
   hotspots,
   onNavigate,
+  northAngle = 0,
+  onNorthAngleChange,
 }: PanoramaViewerProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,16 +133,14 @@ export function PanoramaViewer({
   const hotspotsDataRef = useRef<PanoramaHotspot[]>([]);
 
   const [scenes, setScenes] = useState<PanoramaScene[]>(() =>
-    initialImage
-      ? [{ id: String(++sceneCounter), name: "Panorama", dataUrl: initialImage }]
-      : [],
+    initialImage ? [{ id: String(++sceneCounter), name: "Panorama", dataUrl: initialImage }] : [],
   );
   const [activeScene, setActiveScene] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const yawRef = useRef(0);
+  const yawRef = useRef(persistedYaw + northAngle);
   const pitchRef = useRef(0);
   const fovRef = useRef(75);
   const isDraggingRef = useRef(false);
@@ -143,6 +149,11 @@ export function PanoramaViewer({
 
   const autoRotateRef = useRef(false);
   const [autoRotate, setAutoRotate] = useState(false);
+  const keysDownRef = useRef(new Set<string>());
+  const [displayYaw, setDisplayYaw] = useState(0);
+  const lastDisplayYawRef = useRef(0);
+  const northAngleRef = useRef(northAngle);
+  const [calibrating, setCalibrating] = useState(false);
 
   const glInitedRef = useRef(false);
 
@@ -150,6 +161,17 @@ export function PanoramaViewer({
   useEffect(() => {
     hotspotsDataRef.current = hotspots ?? [];
   }, [hotspots]);
+
+  useEffect(() => {
+    northAngleRef.current = northAngle;
+  }, [northAngle]);
+
+  // Re-focus container when initialImage changes (room navigation)
+  useEffect(() => {
+    if (initialImage) {
+      requestAnimationFrame(() => containerRef.current?.focus());
+    }
+  }, [initialImage]);
 
   const initGL = useCallback(() => {
     if (glInitedRef.current) return;
@@ -240,6 +262,23 @@ export function PanoramaViewer({
       yawRef.current += 0.002;
     }
 
+    const keys = keysDownRef.current;
+    if (keys.size > 0) {
+      const speed = 0.025;
+      if (keys.has("ArrowLeft")) yawRef.current -= speed;
+      if (keys.has("ArrowRight")) yawRef.current += speed;
+    }
+
+    // Persist compass-relative yaw so room transitions keep the same look direction
+    persistedYaw = yawRef.current - northAngleRef.current;
+    const adjustedYaw = yawRef.current - northAngleRef.current;
+    const yawDeg = ((((adjustedYaw * 180) / Math.PI) % 360) + 360) % 360;
+    const rounded = Math.round(yawDeg);
+    if (rounded !== lastDisplayYawRef.current) {
+      lastDisplayYawRef.current = rounded;
+      setDisplayYaw(rounded);
+    }
+
     const dpr = window.devicePixelRatio || 1;
     const displayWidth = Math.floor(canvas.clientWidth * dpr);
     const displayHeight = Math.floor(canvas.clientHeight * dpr);
@@ -273,15 +312,18 @@ export function PanoramaViewer({
       const cosP = Math.cos(pitchRef.current);
       const sinP = Math.sin(pitchRef.current);
 
+      const north = northAngleRef.current;
+
       for (const hs of hsData) {
         const el = hsEls.get(hs.id);
         if (!el) continue;
 
-        // Hotspot direction on unit sphere
+        // Hotspot direction on unit sphere: north offset maps floor-plan north to pano yaw
+        const hsYaw = hs.yaw - north;
         const cosPhi = Math.cos(hs.pitch);
-        const wx = Math.sin(hs.yaw) * cosPhi;
+        const wx = Math.sin(hsYaw) * cosPhi;
         const wy = Math.sin(hs.pitch);
-        const wz = Math.cos(hs.yaw) * cosPhi;
+        const wz = Math.cos(hsYaw) * cosPhi;
 
         // Inverse yaw rotation (undo camera yaw)
         const vx = cosY * wx + sinY * wz;
@@ -328,7 +370,10 @@ export function PanoramaViewer({
   // Load texture when active scene changes
   useEffect(() => {
     if (scenes.length > 0 && scenes[activeScene]) {
-      yawRef.current = 0;
+      const adjustedYaw = (((yawRef.current - northAngleRef.current) * 180) / Math.PI) % 360;
+      console.log(
+        `[Pano] Scene changed to "${scenes[activeScene].name}" | yaw ${Math.round(adjustedYaw)}°`,
+      );
       pitchRef.current = 0;
       fovRef.current = 75;
       uploadTexture(scenes[activeScene].dataUrl);
@@ -432,6 +477,93 @@ export function PanoramaViewer({
     };
   }, [scenes.length]);
 
+  // Arrow key navigation
+  // Left/Right: smooth yaw rotation (held keys, applied in render loop)
+  // Up/Down: navigate to connected room hotspot in forward/backward 90° cone
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const keysDown = keysDownRef.current;
+    const horizontalKeys = new Set(["ArrowLeft", "ArrowRight"]);
+
+    const normalizeAngle = (a: number) => {
+      let n = a % (2 * Math.PI);
+      if (n > Math.PI) n -= 2 * Math.PI;
+      if (n < -Math.PI) n += 2 * Math.PI;
+      return n;
+    };
+
+    const findHotspotInCone = (centerYaw: number) => {
+      const hs = hotspotsDataRef.current;
+      if (!hs.length || !onNavigate) return null;
+      const north = northAngleRef.current;
+      const halfCone = Math.PI / 4; // 45° each side = 90° cone
+      let best: PanoramaHotspot | null = null;
+      let bestDist = Infinity;
+      for (const h of hs) {
+        // Apply north offset to hotspot yaw before comparing with camera yaw
+        const adjustedYaw = h.yaw + north;
+        const diff = Math.abs(normalizeAngle(adjustedYaw - centerYaw));
+        if (diff <= halfCone && diff < bestDist) {
+          bestDist = diff;
+          best = h;
+        }
+      }
+      return best;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (scenes.length === 0) return;
+
+      if (horizontalKeys.has(e.key)) {
+        e.preventDefault();
+        keysDown.add(e.key);
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        // Forward cone: current yaw direction
+        const target = findHotspotInCone(yawRef.current);
+        if (target) {
+          onNavigate?.(target.id);
+          requestAnimationFrame(() => container.focus());
+        }
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        // Backward cone: opposite of current yaw
+        const target = findHotspotInCone(yawRef.current + Math.PI);
+        if (target) {
+          onNavigate?.(target.id);
+          requestAnimationFrame(() => container.focus());
+        }
+        return;
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      keysDown.delete(e.key);
+    };
+
+    const onBlur = () => {
+      keysDown.clear();
+    };
+
+    container.addEventListener("keydown", onKeyDown);
+    container.addEventListener("keyup", onKeyUp);
+    container.addEventListener("blur", onBlur);
+    return () => {
+      container.removeEventListener("keydown", onKeyDown);
+      container.removeEventListener("keyup", onKeyUp);
+      container.removeEventListener("blur", onBlur);
+      keysDown.clear();
+    };
+  }, [scenes.length, onNavigate]);
+
   // Fullscreen
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -478,7 +610,8 @@ export function PanoramaViewer({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 dark:border-zinc-700"
+        tabIndex={0}
+        className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-700"
       >
         {/* Canvas — always mounted but hidden when empty */}
         <canvas
@@ -532,18 +665,48 @@ export function PanoramaViewer({
                 style={{ display: "none", opacity: 0.85 }}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/40">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-4 w-4 fill-white drop-shadow-md"
-                  >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white drop-shadow-md">
                     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                   </svg>
                 </div>
-                <span className="whitespace-nowrap rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white/90 shadow backdrop-blur-sm">
+                <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-white/90 shadow backdrop-blur-sm">
                   {hs.name}
                 </span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Yaw indicator + calibration */}
+        {hasScenes && (
+          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <div className="rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white/70 backdrop-blur-sm">
+              {displayYaw}°
+            </div>
+            {calibrating && (
+              <div className="flex items-center gap-1 rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                <span>Set north</span>
+                <button
+                  onClick={() => {
+                    northAngleRef.current = yawRef.current;
+                    onNorthAngleChange?.(yawRef.current);
+                    setCalibrating(false);
+                    console.log(
+                      `[Pano] North angle set to ${Math.round((yawRef.current * 180) / Math.PI)}°`,
+                    );
+                  }}
+                  className="cursor-pointer rounded bg-white/20 px-1 py-px text-[9px] hover:bg-white/40"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setCalibrating(false)}
+                  className="cursor-pointer rounded bg-white/20 px-1 py-px text-[9px] hover:bg-white/40"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -599,6 +762,15 @@ export function PanoramaViewer({
                 title="Remove scene"
               >
                 <Trash2 size={14} />
+              </button>
+              <button
+                onClick={() => setCalibrating((c) => !c)}
+                className={`cursor-pointer rounded p-1 transition-colors hover:bg-white/20 ${
+                  calibrating ? "text-amber-400" : "text-white/40"
+                }`}
+                title="Calibrate north angle"
+              >
+                <Compass size={14} />
               </button>
               <button
                 onClick={toggleAutoRotate}

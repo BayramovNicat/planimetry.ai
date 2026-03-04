@@ -9,7 +9,7 @@ import { wallArea } from "../utils/dimensions";
 import { FloorPlanCanvas } from "./FloorPlanCanvas";
 import { ImagePreview } from "./ImagePreview";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { PanoramaViewer, type PanoramaHotspot } from "./PanoramaViewer";
+import { type PanoramaHotspot, PanoramaViewer } from "./PanoramaViewer";
 import { RoomCardGrid } from "./RoomCardGrid";
 import { Tooltip } from "./Tooltip";
 
@@ -51,7 +51,17 @@ export function useFloorPlanEditor(
     [activeRoom, remeasureRoom],
   );
 
-  return { ...rest, activeRoom, remeasureRoom, canvasRef, splitMode, setSplitMode, connectMode, setConnectMode, handleDrawRect };
+  return {
+    ...rest,
+    activeRoom,
+    remeasureRoom,
+    canvasRef,
+    splitMode,
+    setSplitMode,
+    connectMode,
+    setConnectMode,
+    handleDrawRect,
+  };
 }
 
 export type FloorPlanEditorState = ReturnType<typeof useFloorPlanEditor>;
@@ -102,20 +112,14 @@ export function FloorPlanEditor({
     const curCy = (cy1 + cy2) / 2;
 
     return result.connections
-      .flatMap((c) =>
-        c.from === panoramaRoom
-          ? [c.to]
-          : c.to === panoramaRoom
-            ? [c.from]
-            : [],
-      )
+      .flatMap((c) => (c.from === panoramaRoom ? [c.to] : c.to === panoramaRoom ? [c.from] : []))
       .filter((i) => result.rooms[i]?.panoramaImage)
       .map((i) => {
         const r = result.rooms[i];
         const [ry1, rx1, ry2, rx2] = r.bbox;
         const dx = (rx1 + rx2) / 2 - curCx;
         const dy = (ry1 + ry2) / 2 - curCy;
-        // Map floor plan direction to sphere yaw (up on floor plan = yaw 0)
+        // Raw floor plan direction — north offset applied inside PanoramaViewer
         const yaw = Math.atan2(dx, -dy);
         return { id: i, name: r.name, yaw, pitch: -0.2 };
       });
@@ -261,9 +265,7 @@ export function FloorPlanEditor({
         >
           <div className="relative w-full max-w-4xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-white">
-                {result.rooms[panoramaRoom].name}
-              </h3>
+              <h3 className="text-sm font-medium text-white">{result.rooms[panoramaRoom].name}</h3>
               <button
                 onClick={() => setPanoramaRoom(null)}
                 className="cursor-pointer rounded p-1 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
@@ -276,6 +278,10 @@ export function FloorPlanEditor({
               initialImage={result.rooms[panoramaRoom].panoramaImage}
               hotspots={panoramaHotspots}
               onNavigate={setPanoramaRoom}
+              northAngle={result.rooms[panoramaRoom].panoramaNorthAngle ?? 0}
+              onNorthAngleChange={(angle) =>
+                updateRoom(panoramaRoom, { panoramaNorthAngle: angle })
+              }
             />
           </div>
         </div>

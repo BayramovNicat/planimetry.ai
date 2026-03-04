@@ -153,12 +153,7 @@ export function useCanvasRenderer(
         if (opts?.connections) {
           drawConnections(ctx, opts.connections, rects);
         }
-        drawConnectionCircles(
-          ctx,
-          normalizedRooms,
-          rects,
-          opts?.connectHoverIndex ?? null,
-        );
+        drawConnectionCircles(ctx, normalizedRooms, rects, opts?.connectHoverIndex ?? null);
         if (opts?.connectPreview) {
           drawConnectionPreview(ctx, opts.connectPreview);
         }

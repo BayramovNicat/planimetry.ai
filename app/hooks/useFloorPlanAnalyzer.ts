@@ -185,6 +185,7 @@ export function useFloorPlanAnalyzer({
         height?: number;
         bbox?: [number, number, number, number];
         panoramaImage?: string | null;
+        panoramaNorthAngle?: number;
       },
     ) => {
       if (!result) return;
@@ -206,6 +207,9 @@ export function useFloorPlanAnalyzer({
       if (fields.bbox !== undefined) updated.bbox = fields.bbox;
       if (fields.panoramaImage !== undefined) {
         updated.panoramaImage = fields.panoramaImage === null ? undefined : fields.panoramaImage;
+      }
+      if (fields.panoramaNorthAngle !== undefined) {
+        updated.panoramaNorthAngle = fields.panoramaNorthAngle;
       }
 
       const updatedRooms = result.rooms.map((r, i) => (i === index ? updated : r));

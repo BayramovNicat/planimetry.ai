@@ -161,7 +161,19 @@ export function useCanvasInteraction({
         drag.startMoveDrag(found, mx, my);
       }
     },
-    [getMousePos, normalizedRooms, activeRoom, splitMode, connectMode, onSplit, onConnect, layoutRef, drag, split, connect],
+    [
+      getMousePos,
+      normalizedRooms,
+      activeRoom,
+      splitMode,
+      connectMode,
+      onSplit,
+      onConnect,
+      layoutRef,
+      drag,
+      split,
+      connect,
+    ],
   );
 
   const handleMouseMove = useCallback(

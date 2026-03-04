@@ -67,10 +67,17 @@ export function FloorPlanCanvas({
     });
 
   useEffect(() => {
-    drawRooms(highlightIndex, connectMode ? null : activeRoom, undefined, connectMode ? {
-      connectMode: true,
-      connections,
-    } : undefined);
+    drawRooms(
+      highlightIndex,
+      connectMode ? null : activeRoom,
+      undefined,
+      connectMode
+        ? {
+            connectMode: true,
+            connections,
+          }
+        : undefined,
+    );
   }, [drawRooms, highlightIndex, activeRoom, connectMode, connections]);
 
   return (

@@ -10,6 +10,8 @@ export interface Room {
   colorIndex?: number;
   /** Base64 panorama image assigned from gallery drag-and-drop */
   panoramaImage?: string;
+  /** North angle offset for panorama in radians — aligns pano orientation to floor plan */
+  panoramaNorthAngle?: number;
 }
 
 export interface AnalysisResult {
