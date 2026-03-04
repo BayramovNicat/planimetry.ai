@@ -264,8 +264,7 @@ export function FloorPlanEditor({
           }}
         >
           <div className="relative w-full max-w-4xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-white">{result.rooms[panoramaRoom].name}</h3>
+            <div className="mb-3 flex justify-end">
               <button
                 onClick={() => setPanoramaRoom(null)}
                 className="cursor-pointer rounded p-1 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
@@ -276,6 +275,7 @@ export function FloorPlanEditor({
             <PanoramaViewer
               key={panoramaRoom}
               initialImage={result.rooms[panoramaRoom].panoramaImage}
+              sceneName={result.rooms[panoramaRoom].name}
               hotspots={panoramaHotspots}
               onNavigate={setPanoramaRoom}
               northAngle={result.rooms[panoramaRoom].panoramaNorthAngle ?? 0}

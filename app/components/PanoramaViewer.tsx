@@ -105,6 +105,8 @@ export interface PanoramaHotspot {
 
 interface PanoramaViewerProps {
   initialImage?: string;
+  /** Name shown in the scene carousel for the initial image */
+  sceneName?: string;
   hotspots?: PanoramaHotspot[];
   onNavigate?: (id: number) => void;
   /** North angle offset in radians — rotates the panorama so angles align with floor plan */
@@ -118,6 +120,7 @@ let persistedYaw = 0;
 
 export function PanoramaViewer({
   initialImage,
+  sceneName,
   hotspots,
   onNavigate,
   northAngle = 0,
@@ -135,7 +138,9 @@ export function PanoramaViewer({
   const yawDisplayRef = useRef<HTMLDivElement>(null);
 
   const [scenes, setScenes] = useState<PanoramaScene[]>(() =>
-    initialImage ? [{ id: String(++sceneCounter), name: "Panorama", dataUrl: initialImage }] : [],
+    initialImage
+      ? [{ id: String(++sceneCounter), name: sceneName || "Panorama", dataUrl: initialImage }]
+      : [],
   );
   const [activeScene, setActiveScene] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -623,10 +628,6 @@ export function PanoramaViewer({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Panorama</h3>
-      </div>
-
       <div
         ref={containerRef}
         onDragOver={handleDragOver}
