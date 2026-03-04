@@ -52,16 +52,20 @@ export function useFloorPlanAnalyzer({
   }
 
   const handleImageRef = useRef<((base64: string) => Promise<void>) | null>(null);
+  const isAnalyzingRef = useRef<string | null>(null); // Track imageId being analyzed
 
   useEffect(() => {
-    // Load image from IDB
-    if (project) {
+    const projectId = project?.id;
+    const imageId = project?.imageId;
+
+    if (projectId) {
       let cancelled = false;
       loadProjectImage(project).then((base64) => {
         if (cancelled) return;
         setImage(base64);
-        // Auto-analyze if project has image but no result yet
-        if (base64 && !project.result) {
+
+        // Auto-analyze if project has image but no result yet, AND we aren't already analyzing it
+        if (base64 && !project.result && !loading && isAnalyzingRef.current !== imageId) {
           handleImageRef.current?.(base64);
         }
       });
@@ -71,7 +75,7 @@ export function useFloorPlanAnalyzer({
     } else {
       setImage(null);
     }
-  }, [project]);
+  }, [project, loading]); // project is now a dependency to satisfy ESLint
 
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
@@ -113,6 +117,11 @@ export function useFloorPlanAnalyzer({
 
   const handleImage = useCallback(
     async (base64: string) => {
+      if (loading) return;
+
+      const imageId = project ? `fp_${project.id}` : null;
+      if (imageId) isAnalyzingRef.current = imageId;
+
       setImage(base64);
       setResult(null);
       setError(null);
@@ -122,8 +131,7 @@ export function useFloorPlanAnalyzer({
       setHistorySize(0);
 
       // Save image to IDB and update project reference
-      if (project) {
-        const imageId = `fp_${project.id}`;
+      if (project && imageId) {
         saveImage(imageId, base64).catch((e) =>
           console.error("[Planimetry] Failed to save floor plan image:", e),
         );
@@ -158,9 +166,10 @@ export function useFloorPlanAnalyzer({
         setError(msg);
       } finally {
         setLoading(false);
+        isAnalyzingRef.current = null;
       }
     },
-    [project],
+    [project, loading],
   );
 
   handleImageRef.current = handleImage;
