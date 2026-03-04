@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fileToBase64 } from "../utils/fileToBase64";
 
@@ -131,6 +131,8 @@ export function PanoramaViewer({
   const rafRef = useRef<number>(0);
   const hotspotElsRef = useRef<Map<number, HTMLElement>>(new Map());
   const hotspotsDataRef = useRef<PanoramaHotspot[]>([]);
+  const uniformLocsRef = useRef<Record<string, WebGLUniformLocation | null>>({});
+  const yawDisplayRef = useRef<HTMLDivElement>(null);
 
   const [scenes, setScenes] = useState<PanoramaScene[]>(() =>
     initialImage ? [{ id: String(++sceneCounter), name: "Panorama", dataUrl: initialImage }] : [],
@@ -150,7 +152,6 @@ export function PanoramaViewer({
   const autoRotateRef = useRef(false);
   const [autoRotate, setAutoRotate] = useState(false);
   const keysDownRef = useRef(new Set<string>());
-  const [displayYaw, setDisplayYaw] = useState(0);
   const lastDisplayYawRef = useRef(0);
   const northAngleRef = useRef(northAngle);
   const [calibrating, setCalibrating] = useState(false);
@@ -187,6 +188,17 @@ export function PanoramaViewer({
     const program = createProgram(gl);
     programRef.current = program;
     gl.useProgram(program);
+
+    // Cache uniform locations — avoids GL state queries every frame
+    uniformLocsRef.current = {
+      uYaw: gl.getUniformLocation(program, "uYaw"),
+      uPitch: gl.getUniformLocation(program, "uPitch"),
+      uFov: gl.getUniformLocation(program, "uFov"),
+      uAspect: gl.getUniformLocation(program, "uAspect"),
+    };
+
+    // Set clear color once — never changes
+    gl.clearColor(0.1, 0.1, 0.1, 1);
 
     const vertices = new Float32Array([-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1, 1, 1, 1, 1]);
 
@@ -251,9 +263,8 @@ export function PanoramaViewer({
 
   const render = useCallback(() => {
     const gl = glRef.current;
-    const program = programRef.current;
     const canvas = canvasRef.current;
-    if (!gl || !program || !canvas || !imageLoadedRef.current) {
+    if (!gl || !canvas || !imageLoadedRef.current) {
       rafRef.current = requestAnimationFrame(render);
       return;
     }
@@ -270,13 +281,15 @@ export function PanoramaViewer({
     }
 
     // Persist compass-relative yaw so room transitions keep the same look direction
-    persistedYaw = yawRef.current - northAngleRef.current;
     const adjustedYaw = yawRef.current - northAngleRef.current;
+    persistedYaw = adjustedYaw;
     const yawDeg = ((((adjustedYaw * 180) / Math.PI) % 360) + 360) % 360;
     const rounded = Math.round(yawDeg);
     if (rounded !== lastDisplayYawRef.current) {
       lastDisplayYawRef.current = rounded;
-      setDisplayYaw(rounded);
+      // Direct DOM update — avoids triggering React re-render at 60fps
+      const el = yawDisplayRef.current;
+      if (el) el.textContent = `${rounded}°`;
     }
 
     const dpr = window.devicePixelRatio || 1;
@@ -288,15 +301,13 @@ export function PanoramaViewer({
     }
 
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0.1, 0.1, 0.1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.useProgram(program);
-
-    gl.uniform1f(gl.getUniformLocation(program, "uYaw"), yawRef.current);
-    gl.uniform1f(gl.getUniformLocation(program, "uPitch"), pitchRef.current);
-    gl.uniform1f(gl.getUniformLocation(program, "uFov"), fovRef.current);
-    gl.uniform1f(gl.getUniformLocation(program, "uAspect"), canvas.width / canvas.height);
+    const locs = uniformLocsRef.current;
+    gl.uniform1f(locs.uYaw!, yawRef.current);
+    gl.uniform1f(locs.uPitch!, pitchRef.current);
+    gl.uniform1f(locs.uFov!, fovRef.current);
+    gl.uniform1f(locs.uAspect!, canvas.width / canvas.height);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -594,7 +605,21 @@ export function PanoramaViewer({
     setActiveScene((i) => (i + 1) % scenes.length);
   }, [scenes.length]);
 
-  const hasScenes = scenes.length > 0;
+  const hasScenes = useMemo(() => scenes.length > 0, [scenes.length]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const handleDeleteActive = useCallback(
+    () => deleteScene(activeScene),
+    [deleteScene, activeScene],
+  );
+
+  const toggleCalibrating = useCallback(() => setCalibrating((c) => !c), []);
 
   return (
     <div>
@@ -604,11 +629,8 @@ export function PanoramaViewer({
 
       <div
         ref={containerRef}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         tabIndex={0}
         className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-700"
@@ -680,8 +702,11 @@ export function PanoramaViewer({
         {/* Yaw indicator + calibration */}
         {hasScenes && (
           <div className="absolute top-2 left-2 flex items-center gap-1.5">
-            <div className="rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white/70 backdrop-blur-sm">
-              {displayYaw}°
+            <div
+              ref={yawDisplayRef}
+              className="rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white/70 backdrop-blur-sm"
+            >
+              0°
             </div>
             {calibrating && (
               <div className="flex items-center gap-1 rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
@@ -757,14 +782,14 @@ export function PanoramaViewer({
             {/* Right controls */}
             <div className="flex items-center gap-1">
               <button
-                onClick={() => deleteScene(activeScene)}
+                onClick={handleDeleteActive}
                 className="cursor-pointer rounded p-1 text-white/40 transition-colors hover:bg-white/20 hover:text-red-400"
                 title="Remove scene"
               >
                 <Trash2 size={14} />
               </button>
               <button
-                onClick={() => setCalibrating((c) => !c)}
+                onClick={toggleCalibrating}
                 className={`cursor-pointer rounded p-1 transition-colors hover:bg-white/20 ${
                   calibrating ? "text-amber-400" : "text-white/40"
                 }`}
