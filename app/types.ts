@@ -8,11 +8,14 @@ export interface Room {
   subRects?: [number, number, number, number][];
   /** Stable color index assigned at creation, survives reordering */
   colorIndex?: number;
+  /** Base64 panorama image assigned from gallery drag-and-drop */
+  panoramaImage?: string;
 }
 
 export interface AnalysisResult {
   total_area: number | null;
   rooms: Room[];
+  connections?: Array<{ from: number; to: number }>;
 }
 
 export interface GalleryImage {

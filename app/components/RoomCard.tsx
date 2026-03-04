@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import type { Room } from "../types";
@@ -12,6 +13,7 @@ interface RoomCardProps {
   isDimmed: boolean;
   isActive: boolean;
   onUpdate: (fields: { name?: string; area?: number }) => void;
+  onViewPanorama?: () => void;
 }
 
 export const RoomCard = memo(function RoomCard({
@@ -21,6 +23,7 @@ export const RoomCard = memo(function RoomCard({
   isDimmed,
   isActive,
   onUpdate,
+  onViewPanorama,
 }: RoomCardProps) {
   const [editingField, setEditingField] = useState<"name" | "area" | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -73,6 +76,18 @@ export const RoomCard = memo(function RoomCard({
     >
       <div className="mb-1 flex items-center gap-2">
         <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.text }} />
+        {room.panoramaImage && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewPanorama?.();
+            }}
+            className="shrink-0 cursor-pointer rounded p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
+            title="View panorama"
+          >
+            <Eye size={14} />
+          </button>
+        )}
         {editingField === "name" ? (
           <input
             ref={inputRef}

@@ -93,17 +93,42 @@ function createProgram(gl: WebGLRenderingContext): WebGLProgram {
   return program;
 }
 
+export interface PanoramaHotspot {
+  id: number;
+  name: string;
+  /** Horizontal angle on sphere (radians) */
+  yaw: number;
+  /** Vertical angle on sphere (radians, negative = below horizon) */
+  pitch: number;
+}
+
+interface PanoramaViewerProps {
+  initialImage?: string;
+  hotspots?: PanoramaHotspot[];
+  onNavigate?: (id: number) => void;
+}
+
 let sceneCounter = 0;
 
-export function PanoramaViewer() {
+export function PanoramaViewer({
+  initialImage,
+  hotspots,
+  onNavigate,
+}: PanoramaViewerProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const programRef = useRef<WebGLProgram | null>(null);
   const textureRef = useRef<WebGLTexture | null>(null);
   const rafRef = useRef<number>(0);
+  const hotspotElsRef = useRef<Map<number, HTMLElement>>(new Map());
+  const hotspotsDataRef = useRef<PanoramaHotspot[]>([]);
 
-  const [scenes, setScenes] = useState<PanoramaScene[]>([]);
+  const [scenes, setScenes] = useState<PanoramaScene[]>(() =>
+    initialImage
+      ? [{ id: String(++sceneCounter), name: "Panorama", dataUrl: initialImage }]
+      : [],
+  );
   const [activeScene, setActiveScene] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -120,6 +145,11 @@ export function PanoramaViewer() {
   const [autoRotate, setAutoRotate] = useState(false);
 
   const glInitedRef = useRef(false);
+
+  // Sync hotspots prop to ref for use in render loop
+  useEffect(() => {
+    hotspotsDataRef.current = hotspots ?? [];
+  }, [hotspots]);
 
   const initGL = useCallback(() => {
     if (glInitedRef.current) return;
@@ -230,6 +260,60 @@ export function PanoramaViewer() {
     gl.uniform1f(gl.getUniformLocation(program, "uAspect"), canvas.width / canvas.height);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // Project hotspots from sphere coords to screen positions
+    const hsData = hotspotsDataRef.current;
+    const hsEls = hotspotElsRef.current;
+    if (hsData.length > 0) {
+      const fovRad = (fovRef.current * Math.PI) / 180;
+      const tanHalf = Math.tan(fovRad * 0.5);
+      const aspect = canvas.clientWidth / canvas.clientHeight;
+      const cosY = Math.cos(yawRef.current);
+      const sinY = Math.sin(yawRef.current);
+      const cosP = Math.cos(pitchRef.current);
+      const sinP = Math.sin(pitchRef.current);
+
+      for (const hs of hsData) {
+        const el = hsEls.get(hs.id);
+        if (!el) continue;
+
+        // Hotspot direction on unit sphere
+        const cosPhi = Math.cos(hs.pitch);
+        const wx = Math.sin(hs.yaw) * cosPhi;
+        const wy = Math.sin(hs.pitch);
+        const wz = Math.cos(hs.yaw) * cosPhi;
+
+        // Inverse yaw rotation (undo camera yaw)
+        const vx = cosY * wx + sinY * wz;
+        const vz2 = -sinY * wx + cosY * wz;
+
+        // Inverse pitch rotation (undo camera pitch)
+        const vy = cosP * wy + sinP * vz2;
+        const vz = -sinP * wy + cosP * vz2;
+
+        // Behind camera — hide
+        if (vz >= -0.01) {
+          el.style.display = "none";
+          continue;
+        }
+
+        // Perspective projection to normalized screen coords
+        const sx = vx / -vz;
+        const sy = vy / -vz;
+        const u = sx / (2 * tanHalf * aspect) + 0.5;
+        const v = 0.5 - sy / (2 * tanHalf);
+
+        // Off-screen — hide
+        if (u < -0.1 || u > 1.1 || v < -0.1 || v > 1.1) {
+          el.style.display = "none";
+          continue;
+        }
+
+        el.style.display = "";
+        el.style.left = `${u * 100}%`;
+        el.style.top = `${v * 100}%`;
+      }
+    }
 
     rafRef.current = requestAnimationFrame(render);
   }, []);
@@ -427,6 +511,39 @@ export function PanoramaViewer() {
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/80">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-500 border-t-white" />
+          </div>
+        )}
+
+        {/* 3D-projected hotspots for room navigation */}
+        {hasScenes && hotspots && hotspots.length > 0 && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {hotspots.map((hs) => (
+              <button
+                key={hs.id}
+                ref={(el) => {
+                  if (el) hotspotElsRef.current.set(hs.id, el);
+                  else hotspotElsRef.current.delete(hs.id);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate?.(hs.id);
+                }}
+                className="pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer flex-col items-center gap-1 transition-opacity hover:opacity-100"
+                style={{ display: "none", opacity: 0.85 }}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/40">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 fill-white drop-shadow-md"
+                  >
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                  </svg>
+                </div>
+                <span className="whitespace-nowrap rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white/90 shadow backdrop-blur-sm">
+                  {hs.name}
+                </span>
+              </button>
+            ))}
           </div>
         )}
 

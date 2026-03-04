@@ -1,6 +1,14 @@
 import { ROOM_COLORS } from "../../constants";
 import type { Room } from "../../types";
-import type { Bbox, OverrideBox, ScreenRect, SnapLine, SplitPreview } from "./canvasTypes";
+import type {
+  Bbox,
+  Connection,
+  ConnectPreview,
+  OverrideBox,
+  ScreenRect,
+  SnapLine,
+  SplitPreview,
+} from "./canvasTypes";
 
 interface DrawContext {
   ctx: CanvasRenderingContext2D;
@@ -587,4 +595,99 @@ export function drawResizeHandles(ctx: CanvasRenderingContext2D, activeRect: Scr
   drawHandle(activeRect.x + activeRect.w, activeRect.y + activeRect.h / 2);
   drawHandle(activeRect.x + activeRect.w / 2, activeRect.y + activeRect.h);
   drawHandle(activeRect.x, activeRect.y + activeRect.h / 2);
+}
+
+// ─── Connection mode ──────────────────────────────────────────────────
+
+const CIRCLE_COLOR = "rgba(59, 130, 246, 0.9)";
+const CIRCLE_FILL = "rgba(59, 130, 246, 0.15)";
+const CIRCLE_HOVER_FILL = "rgba(59, 130, 246, 0.35)";
+const LINE_COLOR = "rgba(59, 130, 246, 0.7)";
+
+export function getCircleRadius(w: number, h: number): number {
+  return Math.max(8, Math.min(16, Math.min(w, h) / 8));
+}
+
+export function drawConnectionCircles(
+  ctx: CanvasRenderingContext2D,
+  rooms: Room[],
+  rects: ScreenRect[],
+  hoverIndex: number | null,
+) {
+  rooms.forEach((room, i) => {
+    if (!room.panoramaImage) return;
+    const { x, y, w, h } = rects[i];
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const r = getCircleRadius(w, h);
+    const isHover = hoverIndex === i;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = isHover ? CIRCLE_HOVER_FILL : CIRCLE_FILL;
+    ctx.fill();
+    ctx.strokeStyle = CIRCLE_COLOR;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Small inner dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = CIRCLE_COLOR;
+    ctx.fill();
+  });
+}
+
+export function drawConnections(
+  ctx: CanvasRenderingContext2D,
+  connections: Connection[],
+  rects: ScreenRect[],
+) {
+  ctx.save();
+  ctx.strokeStyle = LINE_COLOR;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+
+  for (const conn of connections) {
+    const from = rects[conn.from];
+    const to = rects[conn.to];
+    if (!from || !to) continue;
+
+    const fx = from.x + from.w / 2;
+    const fy = from.y + from.h / 2;
+    const tx = to.x + to.w / 2;
+    const ty = to.y + to.h / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+
+    // Endpoint dots
+    for (const [px, py] of [
+      [fx, fy],
+      [tx, ty],
+    ]) {
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fillStyle = LINE_COLOR;
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawConnectionPreview(ctx: CanvasRenderingContext2D, preview: ConnectPreview) {
+  ctx.save();
+  ctx.strokeStyle = CIRCLE_COLOR;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+
+  ctx.beginPath();
+  ctx.moveTo(preview.fromX, preview.fromY);
+  ctx.lineTo(preview.toX, preview.toY);
+  ctx.stroke();
+
+  ctx.restore();
 }

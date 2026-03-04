@@ -1,7 +1,7 @@
 "use client";
 
-import { Redo2, Scissors, Undo2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { Link, Redo2, Scissors, Undo2, X } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useFloorPlanAnalyzer } from "../hooks/useFloorPlanAnalyzer";
 import type { AnalysisResult, Project } from "../types";
@@ -9,6 +9,7 @@ import { wallArea } from "../utils/dimensions";
 import { FloorPlanCanvas } from "./FloorPlanCanvas";
 import { ImagePreview } from "./ImagePreview";
 import { LoadingSkeleton } from "./LoadingSkeleton";
+import { PanoramaViewer, type PanoramaHotspot } from "./PanoramaViewer";
 import { RoomCardGrid } from "./RoomCardGrid";
 import { Tooltip } from "./Tooltip";
 
@@ -31,6 +32,7 @@ export function useFloorPlanEditor(
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [splitMode, setSplitMode] = useState(false);
+  const [connectMode, setConnectMode] = useState(false);
   const [prevActiveRoom, setPrevActiveRoom] = useState(activeRoom);
 
   if (activeRoom !== prevActiveRoom) {
@@ -49,7 +51,7 @@ export function useFloorPlanEditor(
     [activeRoom, remeasureRoom],
   );
 
-  return { ...rest, activeRoom, remeasureRoom, canvasRef, splitMode, setSplitMode, handleDrawRect };
+  return { ...rest, activeRoom, remeasureRoom, canvasRef, splitMode, setSplitMode, connectMode, setConnectMode, handleDrawRect };
 }
 
 export type FloorPlanEditorState = ReturnType<typeof useFloorPlanEditor>;
@@ -79,12 +81,49 @@ export function FloorPlanEditor({
     canRedo,
     splitMode,
     setSplitMode,
+    connectMode,
+    setConnectMode,
     moveRoom,
     updateRoom,
     splitRoom,
     mergeRooms,
     reorderRooms,
+    addConnection,
   } = state;
+
+  const [panoramaRoom, setPanoramaRoom] = useState<number | null>(null);
+
+  const panoramaHotspots = useMemo<PanoramaHotspot[]>(() => {
+    if (panoramaRoom === null || !result?.connections) return [];
+    const current = result.rooms[panoramaRoom];
+    if (!current) return [];
+    const [cy1, cx1, cy2, cx2] = current.bbox;
+    const curCx = (cx1 + cx2) / 2;
+    const curCy = (cy1 + cy2) / 2;
+
+    return result.connections
+      .flatMap((c) =>
+        c.from === panoramaRoom
+          ? [c.to]
+          : c.to === panoramaRoom
+            ? [c.from]
+            : [],
+      )
+      .filter((i) => result.rooms[i]?.panoramaImage)
+      .map((i) => {
+        const r = result.rooms[i];
+        const [ry1, rx1, ry2, rx2] = r.bbox;
+        const dx = (rx1 + rx2) / 2 - curCx;
+        const dy = (ry1 + ry2) / 2 - curCy;
+        // Map floor plan direction to sphere yaw (up on floor plan = yaw 0)
+        const yaw = Math.atan2(dx, -dy);
+        return { id: i, name: r.name, yaw, pitch: -0.2 };
+      });
+  }, [panoramaRoom, result]);
+
+  const handleViewPanorama = useCallback((index: number) => {
+    setPanoramaRoom(index);
+  }, []);
 
   if (!image) return null;
 
@@ -137,7 +176,7 @@ export function FloorPlanEditor({
                 </button>
               </Tooltip>
             </div>
-            {activeRoom !== null && (
+            {activeRoom !== null && !connectMode && (
               <div className="flex items-center gap-1.5">
                 <Tooltip label="Split room" side="bottom">
                   <button
@@ -156,6 +195,28 @@ export function FloorPlanEditor({
                 </span>
               </div>
             )}
+            <Tooltip label="Connect rooms" side="bottom">
+              <button
+                onClick={() => {
+                  setConnectMode((v) => {
+                    if (!v) setSplitMode(false);
+                    return !v;
+                  });
+                }}
+                className={`cursor-pointer rounded-lg border px-2 py-1 text-sm transition-colors ${
+                  connectMode
+                    ? "border-blue-400 bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                }`}
+              >
+                <Link size={14} />
+              </button>
+            </Tooltip>
+            {connectMode && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                Drag between rooms to connect
+              </span>
+            )}
           </div>
 
           <FloorPlanCanvas
@@ -169,6 +230,9 @@ export function FloorPlanEditor({
             splitMode={splitMode}
             onSplit={splitRoom}
             onMergeRooms={mergeRooms}
+            connectMode={connectMode}
+            connections={result.connections}
+            onConnect={addConnection}
           />
 
           <RoomCardGrid
@@ -179,7 +243,41 @@ export function FloorPlanEditor({
             onSelectRoom={setActiveRoom}
             onUpdateRoom={updateRoom}
             onReorderRooms={reorderRooms}
+            onViewPanorama={handleViewPanorama}
           />
+        </div>
+      )}
+
+      {/* Panorama overlay */}
+      {panoramaRoom !== null && result?.rooms[panoramaRoom]?.panoramaImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 md:p-8"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPanoramaRoom(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPanoramaRoom(null);
+          }}
+        >
+          <div className="relative w-full max-w-4xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-white">
+                {result.rooms[panoramaRoom].name}
+              </h3>
+              <button
+                onClick={() => setPanoramaRoom(null)}
+                className="cursor-pointer rounded p-1 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <PanoramaViewer
+              key={panoramaRoom}
+              initialImage={result.rooms[panoramaRoom].panoramaImage}
+              hotspots={panoramaHotspots}
+              onNavigate={setPanoramaRoom}
+            />
+          </div>
         </div>
       )}
     </div>

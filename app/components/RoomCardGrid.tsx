@@ -12,8 +12,12 @@ interface RoomCardGridProps {
   onHoverRoom: (index: number | null) => void;
   activeRoom: number | null;
   onSelectRoom: (index: number | null) => void;
-  onUpdateRoom: (index: number, fields: { name?: string; area?: number }) => void;
+  onUpdateRoom: (
+    index: number,
+    fields: { name?: string; area?: number; panoramaImage?: string | null },
+  ) => void;
   onReorderRooms?: (fromIndex: number, toIndex: number) => void;
+  onViewPanorama?: (index: number) => void;
 }
 
 const DATA_ATTR = "data-room-index";
@@ -32,8 +36,10 @@ const DraggableCard = memo(function DraggableCard({
   isActive,
   isDragging,
   isDropTarget,
+  isPanoDropTarget,
   draggable,
   onUpdate,
+  onViewPanorama,
 }: {
   room: Room;
   index: number;
@@ -42,8 +48,13 @@ const DraggableCard = memo(function DraggableCard({
   isActive: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
+  isPanoDropTarget: boolean;
   draggable: boolean;
-  onUpdate: (index: number, fields: { name?: string; area?: number }) => void;
+  onUpdate: (
+    index: number,
+    fields: { name?: string; area?: number; panoramaImage?: string | null },
+  ) => void;
+  onViewPanorama?: () => void;
 }) {
   const handleUpdate = useCallback(
     (fields: { name?: string; area?: number }) => onUpdate(index, fields),
@@ -55,7 +66,11 @@ const DraggableCard = memo(function DraggableCard({
       {...{ [DATA_ATTR]: index }}
       draggable={draggable}
       className={`rounded-lg border-2 transition-all ${
-        isDropTarget ? "border-blue-400 dark:border-blue-500" : "border-transparent"
+        isPanoDropTarget
+          ? "border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20"
+          : isDropTarget
+            ? "border-blue-400 dark:border-blue-500"
+            : "border-transparent"
       } ${isDragging ? "opacity-40" : ""}`}
     >
       <RoomCard
@@ -65,6 +80,7 @@ const DraggableCard = memo(function DraggableCard({
         isDimmed={isDimmed}
         isActive={isActive}
         onUpdate={handleUpdate}
+        onViewPanorama={onViewPanorama}
       />
     </div>
   );
@@ -78,9 +94,11 @@ export function RoomCardGrid({
   onSelectRoom,
   onUpdateRoom,
   onReorderRooms,
+  onViewPanorama,
 }: RoomCardGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [panoDropIndex, setPanoDropIndex] = useState<number | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
   const draggable = !!onReorderRooms;
 
@@ -131,6 +149,14 @@ export function RoomCardGrid({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
+      const isPanoDrag = e.dataTransfer.types.includes("application/x-panorama");
+      if (isPanoDrag) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        const i = getIndex(e);
+        if (i !== null) setPanoDropIndex(i);
+        return;
+      }
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       const i = getIndex(e);
@@ -142,15 +168,24 @@ export function RoomCardGrid({
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear if leaving the grid entirely
     if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
       setDropIndex(null);
+      setPanoDropIndex(null);
     }
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      const panoData = e.dataTransfer.getData("application/x-panorama");
+      if (panoData) {
+        const i = getIndex(e);
+        if (i !== null) {
+          onUpdateRoom(i, { panoramaImage: panoData });
+        }
+        setPanoDropIndex(null);
+        return;
+      }
       const i = getIndex(e);
       if (i !== null && dragIndex !== null && dragIndex !== i && onReorderRooms) {
         onReorderRooms(dragIndex, i);
@@ -158,7 +193,7 @@ export function RoomCardGrid({
       setDragIndex(null);
       setDropIndex(null);
     },
-    [dragIndex, onReorderRooms],
+    [dragIndex, onReorderRooms, onUpdateRoom],
   );
 
   const handleDragEnd = useCallback(() => {
@@ -168,6 +203,7 @@ export function RoomCardGrid({
     }
     setDragIndex(null);
     setDropIndex(null);
+    setPanoDropIndex(null);
   }, []);
 
   return (
@@ -192,8 +228,12 @@ export function RoomCardGrid({
           isActive={activeRoom === i}
           isDragging={dragIndex === i}
           isDropTarget={dropIndex === i && dragIndex !== null && dragIndex !== i}
+          isPanoDropTarget={panoDropIndex === i}
           draggable={draggable}
           onUpdate={onUpdateRoom}
+          onViewPanorama={
+            room.panoramaImage && onViewPanorama ? () => onViewPanorama(i) : undefined
+          }
         />
       ))}
     </div>

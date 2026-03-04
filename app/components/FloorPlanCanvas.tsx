@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import type { Room } from "../types";
+import type { Connection } from "./canvas/canvasTypes";
 import { normalizeRooms } from "./canvas/normalizeRooms";
 import { useCanvasInteraction } from "./canvas/useCanvasInteraction";
 import { useCanvasRenderer } from "./canvas/useCanvasRenderer";
@@ -18,6 +19,9 @@ interface FloorPlanCanvasProps {
   splitMode?: boolean;
   onSplit?: (index: number, orientation: "h" | "v", ratio: number) => void;
   onMergeRooms?: (indexA: number, indexB: number) => void;
+  connectMode?: boolean;
+  connections?: Connection[];
+  onConnect?: (from: number, to: number) => void;
 }
 
 export function FloorPlanCanvas({
@@ -31,6 +35,9 @@ export function FloorPlanCanvas({
   splitMode,
   onSplit,
   onMergeRooms,
+  connectMode,
+  connections,
+  onConnect,
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,18 +54,24 @@ export function FloorPlanCanvas({
       highlightIndex,
       activeRoom,
       splitMode,
+      connectMode,
+      connections,
       onHoverRoom,
       onSelectRoom,
       onMoveRoom,
       onUpdateRoom,
       onSplit,
       onMergeRooms,
+      onConnect,
       drawRooms,
     });
 
   useEffect(() => {
-    drawRooms(highlightIndex, activeRoom);
-  }, [drawRooms, highlightIndex, activeRoom]);
+    drawRooms(highlightIndex, connectMode ? null : activeRoom, undefined, connectMode ? {
+      connectMode: true,
+      connections,
+    } : undefined);
+  }, [drawRooms, highlightIndex, activeRoom, connectMode, connections]);
 
   return (
     <div

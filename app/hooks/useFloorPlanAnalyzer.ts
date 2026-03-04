@@ -184,6 +184,7 @@ export function useFloorPlanAnalyzer({
         width?: number;
         height?: number;
         bbox?: [number, number, number, number];
+        panoramaImage?: string | null;
       },
     ) => {
       if (!result) return;
@@ -203,6 +204,9 @@ export function useFloorPlanAnalyzer({
       if (fields.width !== undefined) updated.width = fields.width;
       if (fields.height !== undefined) updated.height = fields.height;
       if (fields.bbox !== undefined) updated.bbox = fields.bbox;
+      if (fields.panoramaImage !== undefined) {
+        updated.panoramaImage = fields.panoramaImage === null ? undefined : fields.panoramaImage;
+      }
 
       const updatedRooms = result.rooms.map((r, i) => (i === index ? updated : r));
       commitResult({ ...result, rooms: updatedRooms });
@@ -397,6 +401,20 @@ export function useFloorPlanAnalyzer({
     [result, commitResult],
   );
 
+  const addConnection = useCallback(
+    (from: number, to: number) => {
+      if (!result) return;
+      const existing = result.connections ?? [];
+      // Avoid duplicates (either direction)
+      const isDuplicate = existing.some(
+        (c) => (c.from === from && c.to === to) || (c.from === to && c.to === from),
+      );
+      if (isDuplicate) return;
+      commitResult({ ...result, connections: [...existing, { from, to }] });
+    },
+    [result, commitResult],
+  );
+
   return {
     image,
     loading,
@@ -412,6 +430,7 @@ export function useFloorPlanAnalyzer({
     mergeRooms,
     splitRoom,
     reorderRooms,
+    addConnection,
     undo,
     redo,
     canUndo,

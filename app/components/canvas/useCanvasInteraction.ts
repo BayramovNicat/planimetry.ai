@@ -1,8 +1,17 @@
 import { useCallback } from "react";
 
 import type { Room } from "../../types";
-import type { Bbox, LayoutInfo, OverrideBox, SnapLine, SplitPreview } from "./canvasTypes";
+import type {
+  Bbox,
+  Connection,
+  ConnectPreview,
+  LayoutInfo,
+  OverrideBox,
+  SnapLine,
+  SplitPreview,
+} from "./canvasTypes";
 import { hitTest } from "./snapUtils";
+import { useCanvasConnect } from "./useCanvasConnect";
 import { useCanvasDrag } from "./useCanvasDrag";
 import { useCanvasSplit } from "./useCanvasSplit";
 
@@ -30,12 +39,15 @@ interface UseCanvasInteractionArgs {
   highlightIndex: number | null;
   activeRoom: number | null;
   splitMode?: boolean;
+  connectMode?: boolean;
+  connections?: Connection[];
   onHoverRoom: (index: number | null) => void;
   onSelectRoom: (index: number | null) => void;
   onMoveRoom: (index: number, bbox: Bbox) => void;
   onUpdateRoom?: (index: number, data: Partial<Room>) => void;
   onSplit?: (index: number, orientation: "h" | "v", ratio: number) => void;
   onMergeRooms?: (indexA: number, indexB: number) => void;
+  onConnect?: (from: number, to: number) => void;
   drawRooms: (
     highlight: number | null,
     active: number | null,
@@ -45,6 +57,10 @@ interface UseCanvasInteractionArgs {
       dragMoved?: boolean;
       snapLines?: SnapLine[];
       splitPreview?: SplitPreview | null;
+      connectMode?: boolean;
+      connections?: Connection[];
+      connectPreview?: ConnectPreview | null;
+      connectHoverIndex?: number | null;
     },
   ) => void;
 }
@@ -60,16 +76,20 @@ export function useCanvasInteraction({
   highlightIndex,
   activeRoom,
   splitMode,
+  connectMode,
+  connections,
   onHoverRoom,
   onSelectRoom,
   onMoveRoom,
   onUpdateRoom,
   onSplit,
   onMergeRooms,
+  onConnect,
   drawRooms,
 }: UseCanvasInteractionArgs) {
   const drag = useCanvasDrag(normalizedRooms);
   const split = useCanvasSplit(normalizedRooms);
+  const connect = useCanvasConnect(normalizedRooms);
 
   const getMousePos = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -84,6 +104,17 @@ export function useCanvasInteraction({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const { mx, my } = getMousePos(e);
+
+      // Connect mode: click on circle to start connection drag
+      if (connectMode && onConnect) {
+        const { rects } = layoutRef.current;
+        const hit = connect.hitTestCircle(mx, my, rects);
+        if (hit !== null) {
+          e.preventDefault();
+          connect.startConnect(hit, rects);
+        }
+        return;
+      }
 
       // Split mode: click to split the active room
       if (splitMode && activeRoom !== null && onSplit) {
@@ -130,7 +161,7 @@ export function useCanvasInteraction({
         drag.startMoveDrag(found, mx, my);
       }
     },
-    [getMousePos, normalizedRooms, activeRoom, splitMode, onSplit, layoutRef, drag, split],
+    [getMousePos, normalizedRooms, activeRoom, splitMode, connectMode, onSplit, onConnect, layoutRef, drag, split, connect],
   );
 
   const handleMouseMove = useCallback(
@@ -138,6 +169,34 @@ export function useCanvasInteraction({
       const canvas = canvasRef.current;
       if (!canvas) return;
       const { mx, my } = getMousePos(e);
+
+      // Connect mode
+      if (connectMode) {
+        const { rects } = layoutRef.current;
+
+        // Dragging a connection line
+        if (connect.dragRef.current) {
+          const preview = connect.updateConnect(mx, my, rects);
+          canvas.style.cursor = "grabbing";
+          drawRooms(highlightIndex, null, undefined, {
+            connectMode: true,
+            connections,
+            connectPreview: preview,
+            connectHoverIndex: preview?.targetIndex ?? null,
+          });
+          return;
+        }
+
+        // Hovering — check if over a circle
+        const hoverCircle = connect.hitTestCircle(mx, my, rects);
+        canvas.style.cursor = hoverCircle !== null ? "grab" : "default";
+        drawRooms(highlightIndex, null, undefined, {
+          connectMode: true,
+          connections,
+          connectHoverIndex: hoverCircle,
+        });
+        return;
+      }
 
       // Split mode: show preview line on hover
       if (splitMode && activeRoom !== null) {
@@ -219,10 +278,13 @@ export function useCanvasInteraction({
       normalizedRooms,
       drag,
       split,
+      connect,
       layoutRef,
       highlightIndex,
       activeRoom,
       splitMode,
+      connectMode,
+      connections,
       onHoverRoom,
       drawRooms,
     ],
@@ -230,6 +292,19 @@ export function useCanvasInteraction({
 
   const handleMouseUp = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Connect mode: finalize connection
+      if (connectMode && connect.dragRef.current && onConnect) {
+        const { mx, my } = getMousePos(e);
+        const { rects } = layoutRef.current;
+        connect.endConnect(mx, my, rects, onConnect);
+        drawRooms(highlightIndex, null, undefined, {
+          connectMode: true,
+          connections,
+        });
+        return;
+      }
+      if (connectMode) return;
+
       // Split mode clicks are handled in handleMouseDown
       if (splitMode && activeRoom !== null) return;
 
@@ -272,19 +347,33 @@ export function useCanvasInteraction({
       canvasRef,
       getMousePos,
       drag,
+      connect,
       layoutRef,
       activeRoom,
       splitMode,
+      connectMode,
+      connections,
       onSelectRoom,
       onMoveRoom,
       onUpdateRoom,
       onMergeRooms,
+      onConnect,
       drawRooms,
       highlightIndex,
     ],
   );
 
   const handleMouseLeave = useCallback(() => {
+    // Cancel any connect drag
+    if (connectMode && connect.dragRef.current) {
+      connect.cancelConnect();
+      drawRooms(highlightIndex, null, undefined, {
+        connectMode: true,
+        connections,
+      });
+      return;
+    }
+
     const currentDrag = drag.dragRef.current;
     if (currentDrag?.moved && drag.dragBboxRef.current) {
       drag.endDrag(onMoveRoom, onUpdateRoom);
@@ -302,6 +391,9 @@ export function useCanvasInteraction({
   }, [
     canvasRef,
     drag,
+    connect,
+    connectMode,
+    connections,
     onHoverRoom,
     onMoveRoom,
     onUpdateRoom,

@@ -1,8 +1,19 @@
 import { useCallback, useRef } from "react";
 
 import type { Room } from "../../types";
-import type { Bbox, LayoutInfo, OverrideBox, SnapLine, SplitPreview } from "./canvasTypes";
+import type {
+  Bbox,
+  Connection,
+  ConnectPreview,
+  LayoutInfo,
+  OverrideBox,
+  SnapLine,
+  SplitPreview,
+} from "./canvasTypes";
 import {
+  drawConnectionCircles,
+  drawConnectionPreview,
+  drawConnections,
   drawMeasurementLabels,
   drawResizeHandles,
   drawRoomFillsAndBorders,
@@ -39,6 +50,10 @@ export function useCanvasRenderer(
         dragMoved?: boolean;
         snapLines?: SnapLine[];
         splitPreview?: SplitPreview | null;
+        connectMode?: boolean;
+        connections?: Connection[];
+        connectPreview?: ConnectPreview | null;
+        connectHoverIndex?: number | null;
       },
     ) => {
       const canvas = canvasRef.current;
@@ -133,30 +148,46 @@ export function useCanvasRenderer(
         (i: number) => opts?.dragIndex === i && (opts?.dragMoved ?? false),
       );
 
-      // 2. Room labels
-      drawRoomLabels(ctx, normalizedRooms, rects, highlight, active, overrideBox);
-
-      // 3. Measurement labels
-      drawMeasurementLabels(dc, normalizedRooms, bboxes, effectiveSubRects);
-
-      // 4. Snap lines
-      if (opts?.snapLines) {
-        drawSnapLines(dc, opts.snapLines, opts?.dragMoved ?? false);
-      }
-
-      // 5. Split preview
-      if (opts?.splitPreview && active !== null) {
-        const activeRect = rects[active];
-        if (activeRect) {
-          drawSplitPreview(dc, opts.splitPreview, activeRect);
+      if (opts?.connectMode) {
+        // Connect mode: show circles instead of labels
+        if (opts?.connections) {
+          drawConnections(ctx, opts.connections, rects);
         }
-      }
+        drawConnectionCircles(
+          ctx,
+          normalizedRooms,
+          rects,
+          opts?.connectHoverIndex ?? null,
+        );
+        if (opts?.connectPreview) {
+          drawConnectionPreview(ctx, opts.connectPreview);
+        }
+      } else {
+        // 2. Room labels
+        drawRoomLabels(ctx, normalizedRooms, rects, highlight, active, overrideBox);
 
-      // 6. Resize handles (skip for composite rooms)
-      if (active !== null && !effectiveSubRects[active]) {
-        const activeRect = rects[active];
-        if (activeRect) {
-          drawResizeHandles(ctx, activeRect);
+        // 3. Measurement labels
+        drawMeasurementLabels(dc, normalizedRooms, bboxes, effectiveSubRects);
+
+        // 4. Snap lines
+        if (opts?.snapLines) {
+          drawSnapLines(dc, opts.snapLines, opts?.dragMoved ?? false);
+        }
+
+        // 5. Split preview
+        if (opts?.splitPreview && active !== null) {
+          const activeRect = rects[active];
+          if (activeRect) {
+            drawSplitPreview(dc, opts.splitPreview, activeRect);
+          }
+        }
+
+        // 6. Resize handles (skip for composite rooms)
+        if (active !== null && !effectiveSubRects[active]) {
+          const activeRect = rects[active];
+          if (activeRect) {
+            drawResizeHandles(ctx, activeRect);
+          }
         }
       }
 

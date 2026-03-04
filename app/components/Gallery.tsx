@@ -78,7 +78,12 @@ export function Gallery({ projectId, onFocus }: GalleryProps) {
           {images.map((img, i) => (
             <div
               key={img.id}
-              className="group relative cursor-pointer overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("application/x-panorama", img.base64);
+                e.dataTransfer.effectAllowed = "copy";
+              }}
+              className="group relative cursor-grab overflow-hidden rounded-lg border border-zinc-200 active:cursor-grabbing dark:border-zinc-700"
               onClick={() => setLightboxIndex(i)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

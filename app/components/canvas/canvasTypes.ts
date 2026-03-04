@@ -52,3 +52,18 @@ export interface OverrideBox {
   tempW?: number;
   tempH?: number;
 }
+
+export interface Connection {
+  from: number;
+  to: number;
+}
+
+export interface ConnectPreview {
+  fromIndex: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  /** Index of the room being hovered over (for snap highlight) */
+  targetIndex: number | null;
+}
