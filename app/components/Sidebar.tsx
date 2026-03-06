@@ -1,6 +1,17 @@
 "use client";
 
-import { Columns2, Ellipsis, Menu, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
+import {
+  Columns2,
+  Ellipsis,
+  GripVertical,
+  Menu,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +26,7 @@ interface SidebarProps {
   onToggle: () => void;
   onDelete: (id: string) => Promise<string | null>;
   onRename: (id: string, name: string) => void;
+  onReorder: (startIndex: number, endIndex: number) => void;
 }
 
 export function Sidebar({
@@ -24,8 +36,10 @@ export function Sidebar({
   onToggle,
   onDelete,
   onRename,
+  onReorder,
 }: SidebarProps) {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -35,6 +49,22 @@ export function Sidebar({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const onDragEnd = useCallback(
+    (result: DropResult) => {
+      if (!result.destination) return;
+      if (result.source.index === result.destination.index) return;
+      onReorder(result.source.index, result.destination.index);
+    },
+    [onReorder],
+  );
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -187,104 +217,157 @@ export function Sidebar({
             </p>
           )}
 
-          {projects
-            .filter((p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            .map((project) => {
-              const isActive = project.id === activeId;
-              const isComparing = comparingId === project.id;
-              const isEditing = editingId === project.id;
-              const isMenuOpen = menuOpenId === project.id;
+          {isMounted ? (
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="projects-list" isDropDisabled={!!searchQuery}>
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef}>
+                    {projects
+                      .filter(
+                        (p) =>
+                          !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+                      )
+                      .map((project, index) => {
+                        const isActive = project.id === activeId;
+                        const isComparing = comparingId === project.id;
+                        const isEditing = editingId === project.id;
+                        const isMenuOpen = menuOpenId === project.id;
 
-              return (
-                <div
-                  key={project.id}
-                  className={`group relative flex items-center rounded-lg text-[13px] transition-colors ${
-                    isComparing
-                      ? "bg-blue-100/80 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-700"
-                      : isActive
-                        ? "bg-zinc-200/80 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-100"
-                        : "text-zinc-600 hover:bg-zinc-200/50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
-                  }`}
-                >
-                  {isEditing ? (
-                    <input
-                      ref={inputRef}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitRename();
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      className="flex-1 rounded-lg border border-blue-400 bg-white px-3 py-2 text-sm outline-none dark:bg-zinc-700"
-                    />
-                  ) : (
-                    <>
-                      <Link
-                        href={
-                          comparingId && comparingId !== project.id
-                            ? `/compare/${comparingId}/${project.id}`
-                            : `/project/${project.id}`
-                        }
-                        onClick={() => {
-                          if (comparingId && comparingId !== project.id) {
-                            setComparingId(null);
-                          }
-                        }}
-                        className="flex-1 truncate px-3 py-2"
-                      >
-                        {project.name}
-                      </Link>
+                        return (
+                          <Draggable
+                            key={project.id}
+                            draggableId={project.id}
+                            index={index}
+                            isDragDisabled={!!searchQuery}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  ...(snapshot.isDragging ? { zIndex: 9999 } : {}),
+                                }}
+                                className={`group relative mb-0.5 flex items-center rounded-lg text-[13px] transition-colors ${
+                                  snapshot.isDragging
+                                    ? "bg-zinc-200/90 shadow-lg ring-1 ring-zinc-300 dark:bg-zinc-800/90 dark:ring-zinc-700"
+                                    : isComparing
+                                      ? "bg-blue-100/80 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-700"
+                                      : isActive
+                                        ? "bg-zinc-200/80 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-100"
+                                        : "text-zinc-600 hover:bg-zinc-200/50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
+                                }`}
+                              >
+                                {/* Drag Handle */}
+                                {!searchQuery && (
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className={`flex h-9 items-center pr-0.5 pl-1.5 text-zinc-400 transition-opacity hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 ${
+                                      snapshot.isDragging
+                                        ? "opacity-100"
+                                        : "opacity-0 group-hover:opacity-100"
+                                    }`}
+                                  >
+                                    <GripVertical size={14} />
+                                  </div>
+                                )}
 
-                      {/* 3-dot menu trigger */}
-                      <div className="relative" ref={isMenuOpen ? menuRef : undefined}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(isMenuOpen ? null : project.id);
-                          }}
-                          className={`mr-1.5 cursor-pointer rounded-md p-1 text-zinc-400 transition-all hover:bg-zinc-300/50 hover:text-zinc-600 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-300 ${
-                            isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                          }`}
-                        >
-                          <Ellipsis size={16} />
-                        </button>
+                                {isEditing ? (
+                                  <input
+                                    ref={inputRef}
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={commitRename}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") commitRename();
+                                      if (e.key === "Escape") setEditingId(null);
+                                    }}
+                                    className={`my-1 mr-2 flex-1 rounded-lg border border-blue-400 bg-white px-3 py-1.5 text-sm outline-none dark:bg-zinc-700 ${
+                                      searchQuery ? "ml-3" : "ml-1"
+                                    }`}
+                                  />
+                                ) : (
+                                  <>
+                                    <Link
+                                      href={
+                                        comparingId && comparingId !== project.id
+                                          ? `/compare/${comparingId}/${project.id}`
+                                          : `/project/${project.id}`
+                                      }
+                                      onClick={() => {
+                                        if (comparingId && comparingId !== project.id) {
+                                          setComparingId(null);
+                                        }
+                                      }}
+                                      className={`flex-1 truncate py-2 pr-3 ${
+                                        searchQuery ? "pl-3" : "pl-1"
+                                      }`}
+                                    >
+                                      {project.name}
+                                    </Link>
 
-                        {/* Dropdown */}
-                        {isMenuOpen && (
-                          <div className="absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border border-zinc-200 bg-white py-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
-                            <button
-                              onClick={() => startRename(project.id, project.name)}
-                              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                            >
-                              <Pencil size={14} />
-                              Rename
-                            </button>
-                            <button
-                              onClick={() => {
-                                setMenuOpenId(null);
-                                setComparingId(project.id);
-                              }}
-                              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                            >
-                              <Columns2 size={14} />
-                              Compare
-                            </button>
-                            <button
-                              onClick={() => handleDelete(project.id)}
-                              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                            >
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                                    {/* 3-dot menu trigger */}
+                                    <div
+                                      className="relative"
+                                      ref={isMenuOpen ? menuRef : undefined}
+                                    >
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setMenuOpenId(isMenuOpen ? null : project.id);
+                                        }}
+                                        className={`mr-1.5 cursor-pointer rounded-md p-1 text-zinc-400 transition-all hover:bg-zinc-300/50 hover:text-zinc-600 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-300 ${
+                                          isMenuOpen
+                                            ? "opacity-100"
+                                            : "opacity-0 group-hover:opacity-100"
+                                        }`}
+                                      >
+                                        <Ellipsis size={16} />
+                                      </button>
+
+                                      {/* Dropdown */}
+                                      {isMenuOpen && (
+                                        <div className="absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border border-zinc-200 bg-white py-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                                          <button
+                                            onClick={() => startRename(project.id, project.name)}
+                                            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                          >
+                                            <Pencil size={14} />
+                                            Rename
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setMenuOpenId(null);
+                                              setComparingId(project.id);
+                                            }}
+                                            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                          >
+                                            <Columns2 size={14} />
+                                            Compare
+                                          </button>
+                                          <button
+                                            onClick={() => handleDelete(project.id)}
+                                            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                          >
+                                            <Trash2 size={14} />
+                                            Delete
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          ) : null}
         </nav>
       </aside>
     </>

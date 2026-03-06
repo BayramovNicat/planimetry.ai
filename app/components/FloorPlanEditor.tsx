@@ -222,6 +222,19 @@ export function FloorPlanEditor({
             <div className="inline-block rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
               Area: {computeTotalArea(result)} m²
             </div>
+            <div className="inline-block rounded-full bg-zinc-800 px-2.5 py-1 text-xs font-semibold text-white dark:bg-zinc-200 dark:text-zinc-900">
+              Living Area:{" "}
+              {Math.round(
+                (computeTotalArea(result) -
+                  result.rooms
+                    .filter((r) =>
+                      ["hol", "s/q", "eyvan"].includes((r.name || "").toLowerCase().trim()),
+                    )
+                    .reduce((sum, r) => sum + r.area, 0)) *
+                  100,
+              ) / 100}{" "}
+              m²
+            </div>
             <div className="inline-block rounded-full bg-zinc-700 px-2.5 py-1 text-xs font-semibold text-white dark:bg-zinc-300 dark:text-zinc-900">
               Walls:{" "}
               {Math.round(

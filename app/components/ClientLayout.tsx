@@ -52,7 +52,8 @@ function subscribeCollapsed(callback: () => void): () => void {
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { projects, addProject, deleteProject, updateProject, renameProject } = useProjects();
+  const { projects, addProject, deleteProject, updateProject, renameProject, reorderProjects } =
+    useProjects();
 
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
@@ -83,6 +84,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         onToggle={toggleSidebar}
         onDelete={deleteProject}
         onRename={renameProject}
+        onReorder={reorderProjects}
       />
       <main
         className={`min-h-screen transition-[margin] duration-300 ease-in-out ${

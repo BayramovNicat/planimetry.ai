@@ -137,12 +137,23 @@ export function useProjects() {
     [updateProject],
   );
 
+  const reorderProjects = useCallback(
+    (startIndex: number, endIndex: number) => {
+      const next = Array.from(projects);
+      const [removed] = next.splice(startIndex, 1);
+      next.splice(endIndex, 0, removed);
+      persistAndEmit(next);
+    },
+    [projects],
+  );
+
   return {
     projects,
     addProject,
     deleteProject,
     updateProject,
     renameProject,
+    reorderProjects,
   };
 }
 
