@@ -111,6 +111,55 @@ export function Sidebar({
     [onDelete, router],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl?.tagName === "INPUT" ||
+        activeEl?.tagName === "TEXTAREA" ||
+        activeEl?.hasAttribute("data-rfd-drag-handle-context-id") ||
+        activeEl?.hasAttribute("data-rbd-drag-handle-context-id");
+
+      if (isInputFocused) return;
+
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+
+        const visibleProjects = projects.filter(
+          (p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
+
+        if (visibleProjects.length === 0) return;
+
+        const currentIndex = visibleProjects.findIndex((p) => p.id === activeId);
+        let nextIndex = currentIndex;
+
+        if (e.key === "ArrowUp") {
+          if (currentIndex > 0) {
+            nextIndex = currentIndex - 1;
+          } else if (currentIndex === -1) {
+            nextIndex = 0;
+          }
+        } else if (e.key === "ArrowDown") {
+          if (currentIndex < visibleProjects.length - 1) {
+            nextIndex = currentIndex + 1;
+          } else if (currentIndex === -1) {
+            nextIndex = 0;
+          }
+        }
+
+        if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < visibleProjects.length) {
+          const nextProject = visibleProjects[nextIndex];
+          if (nextProject && nextProject.id !== activeId) {
+            router.push(`/project/${nextProject.id}`);
+          }
+        }
+      }
+    },
+    [projects, searchQuery, activeId, router],
+  );
+
   return (
     <>
       {/* Toggle button + new plan shortcut — always visible */}
@@ -142,7 +191,9 @@ export function Sidebar({
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed top-0 left-0 z-40 flex h-full w-65 flex-col bg-zinc-50 transition-transform duration-300 ease-in-out dark:bg-zinc-950 ${
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+        className={`fixed top-0 left-0 z-40 flex h-full w-96 flex-col bg-zinc-50 transition-transform duration-300 ease-in-out outline-none dark:bg-zinc-950 ${
           collapsed ? "-translate-x-full" : "translate-x-0"
         }`}
       >
@@ -232,7 +283,30 @@ export function Sidebar({
                         const isComparing = comparingId === project.id;
                         const isEditing = editingId === project.id;
                         const isMenuOpen = menuOpenId === project.id;
+                        ///////// ----------------------------
+                        const { result } = project;
+                        const totalArea = result?.total_area || 0;
+                        const rooms = result?.rooms || [];
 
+                        const livingArea =
+                          Math.round(
+                            (totalArea -
+                              rooms
+                                .filter((r) =>
+                                  ["hol", "s/q", "eyvan"].includes(
+                                    (r.name || "").toLowerCase().trim(),
+                                  ),
+                                )
+                                .reduce((sum, r) => sum + r.area, 0)) *
+                              100,
+                          ) / 100;
+                        const livingAreaPercent =
+                          totalArea > 0 ? ((livingArea * 100) / totalArea).toFixed(2) : "0";
+
+                        const price = Number((totalArea * 1.95).toFixed(3));
+                        const halfPrice = Number((price / 2).toFixed(3));
+                        const monthPrice = Number((halfPrice / 24).toFixed(3));
+                        ///////// ----------------------------
                         return (
                           <Draggable
                             key={project.id}
@@ -303,7 +377,8 @@ export function Sidebar({
                                         searchQuery ? "pl-3" : "pl-1"
                                       }`}
                                     >
-                                      {project.name}
+                                      {project.name} - {project.result?.total_area} - {livingArea} -{" "}
+                                      {livingAreaPercent}% - {price} - {halfPrice} - {monthPrice}
                                     </Link>
 
                                     {/* 3-dot menu trigger */}
