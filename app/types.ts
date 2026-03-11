@@ -36,3 +36,21 @@ export interface Project {
   createdAt: number;
   gallery?: GalleryImage[];
 }
+
+export interface ExportProject {
+  id: string;
+  name: string;
+  imageId?: string;
+  result: AnalysisResult | null;
+  createdAt: number;
+  /** Base64 floor plan image from IndexedDB */
+  image?: string;
+  /** Gallery images with their base64 data */
+  gallery?: Array<GalleryImage & { base64?: string }>;
+}
+
+export interface ExportData {
+  version: 1;
+  exportedAt: string;
+  projects: ExportProject[];
+}

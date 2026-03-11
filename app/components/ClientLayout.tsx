@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { createContext, useContext, useSyncExternalStore } from "react";
 
 import { useProjects } from "../hooks/useProjects";
-import type { Project } from "../types";
+import type { ExportData, Project } from "../types";
 import { Sidebar } from "./Sidebar";
 
 interface ProjectsContextValue {
@@ -52,8 +52,16 @@ function subscribeCollapsed(callback: () => void): () => void {
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { projects, addProject, deleteProject, updateProject, renameProject, reorderProjects } =
-    useProjects();
+  const {
+    projects,
+    addProject,
+    deleteProject,
+    updateProject,
+    renameProject,
+    reorderProjects,
+    importProjects,
+    exportProjects,
+  } = useProjects();
 
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
@@ -85,6 +93,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         onDelete={deleteProject}
         onRename={renameProject}
         onReorder={reorderProjects}
+        onImport={importProjects}
+        onExport={exportProjects}
       />
       <main
         className={`min-h-screen transition-[margin] duration-300 ease-in-out ${

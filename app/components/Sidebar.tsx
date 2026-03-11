@@ -3,6 +3,7 @@
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import {
   Columns2,
+  Download,
   Ellipsis,
   GripVertical,
   Menu,
@@ -10,13 +11,14 @@ import {
   Plus,
   Search,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { Project } from "../types";
+import type { ExportData, Project } from "../types";
 import { Tooltip } from "./Tooltip";
 
 interface SidebarProps {
@@ -27,6 +29,8 @@ interface SidebarProps {
   onDelete: (id: string) => Promise<string | null>;
   onRename: (id: string, name: string) => void;
   onReorder: (startIndex: number, endIndex: number) => void;
+  onImport: (data: ExportData) => Promise<void>;
+  onExport: () => Promise<ExportData>;
 }
 
 export function Sidebar({
@@ -37,6 +41,8 @@ export function Sidebar({
   onDelete,
   onRename,
   onReorder,
+  onImport,
+  onExport,
 }: SidebarProps) {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -49,6 +55,8 @@ export function Sidebar({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -160,8 +168,59 @@ export function Sidebar({
     [projects, searchQuery, activeId, router],
   );
 
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const data = await onExport();
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `planimetry-export-${new Date().toISOString().slice(0, 10)}.planimetry.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("[Planimetry] Export failed:", e);
+    } finally {
+      setExporting(false);
+    }
+  }, [onExport]);
+
+  const handleImport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.version !== 1 || !Array.isArray(data.projects)) {
+          alert("Invalid export file format.");
+          return;
+        }
+        await onImport(data);
+      } catch (err) {
+        console.error("[Planimetry] Import failed:", err);
+        alert("Failed to import file. Please check it is a valid .planimetry.json file.");
+      } finally {
+        // Reset input so the same file can be re-imported
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [onImport],
+  );
+
   return (
     <>
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.planimetry.json"
+        className="hidden"
+        onChange={handleImport}
+      />
+
       {/* Toggle button + new plan shortcut — always visible */}
       <div className="fixed top-3 left-3 z-50 flex flex-col items-center gap-1">
         <Tooltip label={collapsed ? "Open sidebar" : "Close sidebar"} side="right">
@@ -199,24 +258,43 @@ export function Sidebar({
       >
         {/* Header area */}
         <div className="px-3 pt-3 pb-2">
-          {/* Toggle spacer + search button row */}
+          {/* Toggle spacer + action buttons row */}
           <div className="flex items-center justify-between">
             <div className="h-10 w-10" />
-            <Tooltip label={searching ? "Close search" : "Search"} side="bottom">
-              <button
-                onClick={() => {
-                  setSearching(!searching);
-                  setSearchQuery("");
-                }}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-800"
-              >
-                {searching ? (
-                  <X size={16} className="text-zinc-600 dark:text-zinc-400" />
-                ) : (
-                  <Search size={16} className="text-zinc-600 dark:text-zinc-400" />
-                )}
-              </button>
-            </Tooltip>
+            <div className="flex items-center gap-0.5">
+              <Tooltip label="Import" side="bottom">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  <Upload size={16} className="text-zinc-600 dark:text-zinc-400" />
+                </button>
+              </Tooltip>
+              <Tooltip label="Export" side="bottom">
+                <button
+                  onClick={handleExport}
+                  disabled={exporting || projects.length === 0}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-zinc-200 disabled:opacity-40 dark:hover:bg-zinc-800"
+                >
+                  <Download size={16} className="text-zinc-600 dark:text-zinc-400" />
+                </button>
+              </Tooltip>
+              <Tooltip label={searching ? "Close search" : "Search"} side="bottom">
+                <button
+                  onClick={() => {
+                    setSearching(!searching);
+                    setSearchQuery("");
+                  }}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  {searching ? (
+                    <X size={16} className="text-zinc-600 dark:text-zinc-400" />
+                  ) : (
+                    <Search size={16} className="text-zinc-600 dark:text-zinc-400" />
+                  )}
+                </button>
+              </Tooltip>
+            </div>
           </div>
 
           {/* Search input */}

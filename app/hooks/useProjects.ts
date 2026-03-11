@@ -2,8 +2,8 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import type { Project } from "../types";
-import { deleteImages, getImage, saveImage } from "../utils/imageStore";
+import type { ExportData, Project } from "../types";
+import { deleteImages, getImage, saveImage, saveImageRaw } from "../utils/imageStore";
 
 const STORAGE_KEY = "planimetry-projects";
 
@@ -147,6 +147,74 @@ export function useProjects() {
     [projects],
   );
 
+  const importProjects = useCallback(
+    async (data: ExportData) => {
+      const imported: Project[] = [];
+      for (const ep of data.projects) {
+        // Save floor plan image to IndexedDB
+        if (ep.image && ep.imageId) {
+          await saveImageRaw(ep.imageId, ep.image);
+        }
+
+        // Save gallery images to IndexedDB
+        const gallery = ep.gallery?.map((g) => {
+          if (g.base64) {
+            saveImageRaw(g.id, g.base64).catch((e) =>
+              console.error("[Planimetry] Failed to save gallery image:", e),
+            );
+          }
+          return { id: g.id, createdAt: g.createdAt };
+        });
+
+        imported.push({
+          id: ep.id,
+          name: ep.name,
+          imageId: ep.imageId,
+          result: ep.result,
+          createdAt: ep.createdAt,
+          gallery,
+        });
+      }
+
+      // Merge: imported projects go at the front, skip duplicates by id
+      const existingIds = new Set(projects.map((p) => p.id));
+      const newProjects = imported.filter((p) => !existingIds.has(p.id));
+      persistAndEmit([...newProjects, ...projects]);
+    },
+    [projects],
+  );
+
+  const exportProjects = useCallback(async (): Promise<ExportData> => {
+    const exportedProjects = await Promise.all(
+      projects.map(async (p) => {
+        const image = p.imageId ? await getImage(p.imageId) : undefined;
+        const gallery = p.gallery
+          ? await Promise.all(
+              p.gallery.map(async (g) => {
+                const base64 = await getImage(g.id);
+                return { ...g, base64: base64 ?? undefined };
+              }),
+            )
+          : undefined;
+        return {
+          id: p.id,
+          name: p.name,
+          imageId: p.imageId,
+          result: p.result,
+          createdAt: p.createdAt,
+          image: image ?? undefined,
+          gallery,
+        };
+      }),
+    );
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      projects: exportedProjects,
+    };
+  }, [projects]);
+
   return {
     projects,
     addProject,
@@ -154,6 +222,8 @@ export function useProjects() {
     updateProject,
     renameProject,
     reorderProjects,
+    importProjects,
+    exportProjects,
   };
 }
 
