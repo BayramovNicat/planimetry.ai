@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { createContext, useContext, useSyncExternalStore } from "react";
 
 import { useProjects } from "../hooks/useProjects";
-import type { ExportData, Project } from "../types";
+import type { Project } from "../types";
 import { Sidebar } from "./Sidebar";
 
 interface ProjectsContextValue {

@@ -16,11 +16,14 @@ bun format:check   # Prettier check only
 
 **Important**: Do NOT run `bun build`, `bun lint`, `bun format`, or any lint/format/build commands automatically. Only run them when explicitly asked by the user.
 
-Docker: `docker build -t planimetry . && docker run -p 3000:3000 -e GEMINI_API_KEY=key planimetry`
+Docker: `docker build -t planimetry . && docker run -p 3000:3000 -e AI_KEY=key -e AI_BASE_URL=url -e AI_MODEL=model planimetry`
 
 ## Environment Variables
 
-- `GEMINI_API_KEY` — required for the `/api/extract` endpoint (Google Gemini 2.5 Flash)
+- `AI_PROVIDER` — `openai` or `gemini` (defaults to `openai`). Use `openai` for any OpenAI-compatible API (OpenRouter, Groq, OpenAI, etc.)
+- `AI_KEY` — API key for the AI provider (required)
+- `AI_BASE_URL` — Base URL for the AI API (defaults per provider)
+- `AI_MODEL` — Model name (defaults per provider)
 
 ## Tech Stack
 

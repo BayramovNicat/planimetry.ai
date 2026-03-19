@@ -10,19 +10,23 @@ Return total_area if labeled.
 
 Return ONLY JSON: {"total_area": <number|null>, "rooms": [{"name": "<string>", "area": <number>, "bbox": [ymin, xmin, ymax, xmax]}]}`;
 
-async function callGemini(
-  apiKey: string,
-  mimeType: string,
-  base64Data: string,
-  signal: AbortSignal,
-) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+type Provider = "gemini" | "openai";
 
-  const res = await fetch(url, {
-    method: "POST",
+function getProvider(): Provider {
+  const p = process.env.AI_PROVIDER?.toLowerCase();
+  if (p === "gemini") return "gemini";
+  return "openai";
+}
+
+function buildGeminiRequest(mimeType: string, base64Data: string) {
+  const baseUrl = process.env.AI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
+  const model = process.env.AI_MODEL || "gemini-2.5-flash";
+  const apiKey = process.env.AI_KEY;
+
+  return {
+    url: `${baseUrl}/models/${model}:generateContent?key=${apiKey}`,
     headers: { "Content-Type": "application/json" },
-    signal,
-    body: JSON.stringify({
+    body: {
       contents: [
         {
           parts: [{ inlineData: { mimeType, data: base64Data } }, { text: PROMPT }],
@@ -32,17 +36,71 @@ async function callGemini(
         temperature: 0.0,
         thinkingConfig: { thinkingBudget: 0 },
       },
-    }),
+    },
+  };
+}
+
+function buildOpenAIRequest(mimeType: string, base64Data: string) {
+  const baseUrl = process.env.AI_BASE_URL || "https://openrouter.ai/api/v1";
+  const model = process.env.AI_MODEL || "openrouter/auto";
+  const apiKey = process.env.AI_KEY;
+
+  return {
+    url: `${baseUrl}/chat/completions`,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: {
+      model,
+      temperature: 0.0,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:${mimeType};base64,${base64Data}` },
+            },
+            { type: "text", text: PROMPT },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+function extractText(provider: Provider, data: Record<string, unknown>): string | undefined {
+  if (provider === "openai") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any).choices?.[0]?.message?.content;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any).candidates?.[0]?.content?.parts?.[0]?.text;
+}
+
+async function callAI(mimeType: string, base64Data: string, signal: AbortSignal) {
+  const provider = getProvider();
+  const { url, headers, body } =
+    provider === "openai"
+      ? buildOpenAIRequest(mimeType, base64Data)
+      : buildGeminiRequest(mimeType, base64Data);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    signal,
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Gemini API error (${res.status}): ${errText}`);
+    throw new Error(`AI API error (${res.status}): ${errText}`);
   }
 
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("No response from Gemini");
+  const text = extractText(provider, data);
+  if (!text) throw new Error("No response from AI");
 
   return text
     .replace(/```json\s*/g, "")
@@ -51,9 +109,8 @@ async function callGemini(
 }
 
 export async function POST(request: NextRequest) {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
+  if (!process.env.AI_KEY) {
+    return NextResponse.json({ error: "AI_KEY not configured" }, { status: 500 });
   }
 
   let body: { image: string };
@@ -80,7 +137,7 @@ export async function POST(request: NextRequest) {
   const base64Data = match[2];
 
   try {
-    const res = await callGemini(GEMINI_API_KEY, mimeType, base64Data, AbortSignal.timeout(30_000));
+    const res = await callAI(mimeType, base64Data, AbortSignal.timeout(30_000));
 
     let parsed: {
       total_area: number | null;
@@ -119,9 +176,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Extract error:", err);
     return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : "Failed to reach AI service",
-      },
+      { error: "Failed to analyze the floor plan. Please try again later." },
       { status: 502 },
     );
   }

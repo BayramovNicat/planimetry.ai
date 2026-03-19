@@ -66,7 +66,10 @@ bun install
 Create a `.env` file:
 
 ```
-GEMINI_API_KEY=your_key_here
+AI_PROVIDER=openai          # openai (default) or gemini
+AI_KEY=your_key_here
+AI_BASE_URL=https://openrouter.ai/api/v1
+AI_MODEL=openrouter/auto
 ```
 
 ## Development
@@ -79,5 +82,5 @@ bun dev
 
 ```bash
 docker build -t planimetry .
-docker run -p 3000:3000 -e GEMINI_API_KEY=your_key_here planimetry
+docker run -p 3000:3000 -e AI_KEY=your_key_here -e AI_BASE_URL=https://openrouter.ai/api/v1 -e AI_MODEL=openrouter/auto planimetry
 ```

@@ -53,6 +53,7 @@ export function useFloorPlanAnalyzer({
 
   const handleImageRef = useRef<((base64: string) => Promise<void>) | null>(null);
   const isAnalyzingRef = useRef<string | null>(null); // Track imageId being analyzed
+  const failedAnalysisRef = useRef<Set<string>>(new Set()); // Track failed imageIds to prevent retries
 
   useEffect(() => {
     const projectId = project?.id;
@@ -64,8 +65,14 @@ export function useFloorPlanAnalyzer({
         if (cancelled) return;
         setImage(base64);
 
-        // Auto-analyze if project has image but no result yet, AND we aren't already analyzing it
-        if (base64 && !project.result && !loading && isAnalyzingRef.current !== imageId) {
+        // Auto-analyze if project has image but no result yet, AND we aren't already analyzing it, AND it hasn't failed before
+        if (
+          base64 &&
+          !project.result &&
+          !loading &&
+          isAnalyzingRef.current !== imageId &&
+          !(imageId && failedAnalysisRef.current.has(imageId))
+        ) {
           handleImageRef.current?.(base64);
         }
       });
@@ -164,6 +171,7 @@ export function useFloorPlanAnalyzer({
               ? err.message
               : "Something went wrong";
         setError(msg);
+        if (imageId) failedAnalysisRef.current.add(imageId);
       } finally {
         setLoading(false);
         isAnalyzingRef.current = null;
