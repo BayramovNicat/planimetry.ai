@@ -3,9 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "vinext dev",
+    "build": "vinext build",
+    "start": "vinext start",
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "lint:check": "eslint",
@@ -14,22 +14,26 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "lucide-react": "^0.575.0",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vinext": "^0.0.34"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-rsc": "^0.5.21",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "prettier": "3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "react-server-dom-webpack": "^19.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.0.1"
   },
   "ignoreScripts": [
     "sharp",
@@ -38,5 +42,6 @@
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "type": "module"
 }

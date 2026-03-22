@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useProjectsContext } from "../../../components/ClientLayout";
@@ -8,25 +8,28 @@ import { FloorPlanEditor, useFloorPlanEditor } from "../../../components/FloorPl
 import type { Project } from "../../../types";
 
 export default function ComparePage() {
-  const params = useParams<{ id1: string; id2: string }>();
+  const pathname = usePathname();
+  const segments = pathname.split("/");
+  const id1 = segments[2] ?? "";
+  const id2 = segments[3] ?? "";
   const router = useRouter();
   const { projects, updateProject } = useProjectsContext();
 
-  const project1 = projects.find((p) => p.id === params.id1) ?? null;
-  const project2 = projects.find((p) => p.id === params.id2) ?? null;
+  const project1 = projects.find((p) => p.id === id1) ?? null;
+  const project2 = projects.find((p) => p.id === id2) ?? null;
 
   const onUpdateLeft = useCallback(
     (data: Partial<Pick<Project, "imageId" | "result">>) => {
-      if (params.id1) updateProject(params.id1, data);
+      if (id1) updateProject(id1, data);
     },
-    [params.id1, updateProject],
+    [id1, updateProject],
   );
 
   const onUpdateRight = useCallback(
     (data: Partial<Pick<Project, "imageId" | "result">>) => {
-      if (params.id2) updateProject(params.id2, data);
+      if (id2) updateProject(id2, data);
     },
-    [params.id2, updateProject],
+    [id2, updateProject],
   );
 
   const left = useFloorPlanEditor(project1, onUpdateLeft);
@@ -57,10 +60,10 @@ export default function ComparePage() {
 
   // Redirect if either project not found
   useEffect(() => {
-    if (projects.length > 0 && (!project1 || !project2)) {
+    if (id1 && id2 && projects.length > 0 && (!project1 || !project2)) {
       router.replace("/");
     }
-  }, [projects, project1, project2, router]);
+  }, [id1, id2, projects, project1, project2, router]);
 
   if (!project1 || !project2) {
     return null;

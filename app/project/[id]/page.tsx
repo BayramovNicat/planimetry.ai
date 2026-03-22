@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 
 import { useProjectsContext } from "../../components/ClientLayout";
@@ -10,17 +10,18 @@ import { ImageDropZone } from "../../components/ImageDropZone";
 import { useGallery } from "../../hooks/useGallery";
 
 export default function ProjectPage() {
-  const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const id = pathname.split("/")[2] ?? "";
   const router = useRouter();
   const { projects, updateProject } = useProjectsContext();
 
-  const project = projects.find((p) => p.id === params.id) ?? null;
+  const project = projects.find((p) => p.id === id) ?? null;
 
   const onUpdate = useCallback(
     (data: Parameters<typeof updateProject>[1]) => {
-      if (params.id) updateProject(params.id, data);
+      if (id) updateProject(id, data);
     },
-    [params.id, updateProject],
+    [id, updateProject],
   );
 
   const editor = useFloorPlanEditor(project, onUpdate, { disablePaste: true });
@@ -60,10 +61,10 @@ export default function ProjectPage() {
 
   // Redirect if project not found after hydration
   useEffect(() => {
-    if (projects.length > 0 && !project) {
+    if (id && projects.length > 0 && !project) {
       router.replace("/");
     }
-  }, [projects, project, router]);
+  }, [id, projects, project, router]);
 
   if (!project) {
     return null;

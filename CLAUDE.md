@@ -5,9 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-bun dev            # Development server (next dev)
-bun build          # Production build (next build)
-bun start          # Start production server
+bun dev            # Development server (vinext dev)
+bun build          # Production build (vinext build)
+bun start          # Start production server (vinext start)
 bun lint           # ESLint with auto-fix
 bun format         # Prettier with auto-fix
 bun lint:check     # ESLint check only
@@ -27,7 +27,7 @@ Docker: `docker build -t planimetry . && docker run -p 3000:3000 -e AI_KEY=key -
 
 ## Tech Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript 5 (strict) · Tailwind CSS v4 · Bun · HTML5 Canvas API
+vinext (Vite-based Next.js) · React 19 · TypeScript 5 (strict) · Tailwind CSS v4 · Bun · Vite 8 · HTML5 Canvas API
 
 ## Code Style
 
